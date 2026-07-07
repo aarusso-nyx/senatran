@@ -44,6 +44,7 @@ const validAit = (numeroAit: string) => ({
     },
   },
   veiculo: { placa: 'ABC1D23' },
+  evidencias: [{ tipo: 'PHOTO', hash: 'sha256', contentType: 'image/jpeg' }],
 });
 const validDefesa = (tipoRequerente = 'PROPRIETARIO') => ({
   requerente: { tipoRequerente, numeroDocumento: '52998224725' },

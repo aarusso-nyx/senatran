@@ -14,6 +14,7 @@ const AIT = {
   codigoOrgaoAutuador: '1',
   infracao: { codigoInfracao: '74550' },
   veiculo: { placa: 'ABC1D23' },
+  evidencias: [{ tipo: 'PHOTO' }],
 };
 const proc = (situacao: string) => ({ id: 'c1', situacao });
 
@@ -48,6 +49,41 @@ describe('RenainfService', () => {
     const out = await svc.criarAit(AIT, 'k');
     expect(out.status).toBe(201);
     expect((out.body as { situacao: string }).situacao).toBe('VALIDADO');
+  });
+
+  it('criarAit → 402 EVIDENCE_REQUIRED when a code needs evidence and none is given', async () => {
+    const { svc } = make(() => ({ rows: [] }));
+    await expect(
+      svc.criarAit(
+        {
+          numeroAit: 'A2',
+          codigoOrgaoAutuador: '1',
+          infracao: { codigoInfracao: '74550' },
+          veiculo: { placa: 'ABC1D23' },
+        },
+        'k',
+      ),
+    ).rejects.toMatchObject({ returnCode: 402 });
+  });
+
+  it('criarAit → 402 OUT_OF_RANGE for a numeric AIT outside the reserved faixa', async () => {
+    const { svc } = make((sql) =>
+      sql.includes('from renainf.faixa_ait')
+        ? { rows: [{ numero_inicial: '1000', numero_final: '2000' }] }
+        : { rows: [] },
+    );
+    await expect(
+      svc.criarAit(
+        {
+          numeroAit: '5000',
+          codigoOrgaoAutuador: '1',
+          infracao: { codigoInfracao: '99999' },
+          veiculo: { placa: 'ABC1D23' },
+          evidencias: [{ tipo: 'X' }],
+        },
+        'k',
+      ),
+    ).rejects.toMatchObject({ returnCode: 402 });
   });
 
   it('imporPenalidade → 402 CASE.INVALID_STATUS before the defense phase', async () => {

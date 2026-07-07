@@ -69,6 +69,26 @@ consumers can branch on the code while the envelope stays WSDenatran-uniform.
 | `RENAINF.PAYMENT.ALREADY_SETTLED`           | 402  | débito já quitado.                               |
 | `RENAINF.SNE.NOT_ADHERED`                   | 402  | órgão não aderente ao SNE.                       |
 
+## Enforcement status
+
+Actively enforced by the services (each has a test): all `*.NOT_FOUND`,
+`RENACH.PROCESS.INVALID_STATUS`, `RENACH.EXAM.INVALID_TYPE`,
+`RENACH.EXAM.ALREADY_RECORDED`, `RENACH.CLINIC.NOT_ACCREDITED`/`INACTIVE`,
+`RENACH.EXAMINER.NOT_ACCREDITED`, `RENAINF.AIT.DUPLICATED`,
+`RENAINF.AIT.INVALID_NUMBER`/`INVALID_INFRACTION_CODE` (400 via DTO),
+`RENAINF.AIT.INVALID_DEVICE`, `RENAINF.AIT.EVIDENCE_REQUIRED`,
+`RENAINF.AIT.OUT_OF_RANGE`, `RENAINF.CASE.INVALID_STATUS`,
+`RENAINF.DEFENSE.NOT_ALLOWED`, `RENAINF.PENALTY.ALREADY_IMPOSED`,
+`RENAINF.APPEAL.INVALID_INSTANCE`/`PREVIOUS_INSTANCE_REQUIRED`,
+`RENAINF.PAYMENT.ALREADY_SETTLED`.
+
+Modeled in this catalog but **not yet enforced** (they need deadline / SNE
+schema fields that the mock does not carry): `RENACH.BIOMETRY.NOT_MATCHED`,
+`RENACH.SIGNATURE.INVALID`, `RENAINF.AIT.TRANSMISSION_EXPIRED`,
+`RENAINF.NOTICE.DEADLINE_EXPIRED`, `RENAINF.DEFENSE.LATE_SUBMISSION`,
+`RENAINF.SNE.NOT_ADHERED`. These remain documented for consumers and are safe to
+add when the corresponding state is introduced.
+
 ## WSDenatran read endpoints
 
 The 57 read endpoints use the same status table. They have no domain error codes;

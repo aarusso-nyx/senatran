@@ -66,6 +66,23 @@ describe('RenachService', () => {
     expect(update?.params).toEqual(['RS1', 'REJEITADO']);
   });
 
+  it('registrarExame → 402 ALREADY_RECORDED when the same exam type exists', async () => {
+    const { svc } = make((sql) => {
+      if (sql.includes('from renach.processo')) return { rows: [PROC] };
+      if (sql.includes('from renach.exame') && sql.includes('tipo_exame'))
+        return { rows: [{ x: 1 }] };
+      return { rows: [] };
+    });
+    await expect(
+      svc.registrarExame(
+        'RS1',
+        'MEDICO',
+        { exame: { resultado: 'APTO' } },
+        'k',
+      ),
+    ).rejects.toMatchObject({ returnCode: 402 });
+  });
+
   describe('happy paths', () => {
     const H = (sql: string): { rows: unknown[] } => {
       if (sql.includes('from audit.idempotencia')) return { rows: [] };
@@ -89,6 +106,9 @@ describe('RenachService', () => {
         sql.includes("'CHECKIN'")
       )
         return { rows: [{ numero_renach: 'RS1' }] };
+      // ALREADY_RECORDED check: no existing exam of that tipo (happy path).
+      if (sql.includes('from renach.exame') && sql.includes('tipo_exame'))
+        return { rows: [] };
       if (sql.includes('from renach.exame'))
         return { rows: [{ numero_renach: 'RS1' }] };
       return { rows: [] };

@@ -113,8 +113,45 @@ export class RenainfService {
             'Dispositivo/talonário não homologado.',
           );
       }
-      const id = randomUUID();
       const inf = body.infracao as Row;
+      // Codes that mandate photographic evidence.
+      const REQUIRES_EVIDENCE = new Set(['74550', '74630', '60503', '55414']);
+      const evidencias = Array.isArray(body.evidencias) ? body.evidencias : [];
+      if (
+        REQUIRES_EVIDENCE.has(String(inf.codigoInfracao)) &&
+        evidencias.length === 0
+      ) {
+        throw businessError(
+          'RENAINF.AIT.EVIDENCE_REQUIRED',
+          'Evidência obrigatória ausente para a infração.',
+        );
+      }
+      // Numeric AITs must fall within a reserved range for the órgão, if any.
+      if (/^\d+$/.test(numeroAit)) {
+        const faixas = await trx.query<Row>(
+          'select numero_inicial, numero_final from renainf.faixa_ait where codigo_orgao_autuador = $1 and reservada',
+          [body.codigoOrgaoAutuador],
+        );
+        if (faixas.rows.length > 0) {
+          const n = BigInt(numeroAit);
+          const inRange = faixas.rows.some((f) => {
+            try {
+              return (
+                BigInt(String(f.numero_inicial)) <= n &&
+                n <= BigInt(String(f.numero_final))
+              );
+            } catch {
+              return false;
+            }
+          });
+          if (!inRange)
+            throw businessError(
+              'RENAINF.AIT.OUT_OF_RANGE',
+              'Número de AIT fora da faixa reservada.',
+            );
+        }
+      }
+      const id = randomUUID();
       const veic = body.veiculo as Row | undefined;
       await trx.query(
         'insert into renainf.ait (id, numero_ait, codigo_orgao_autuador, situacao, placa, codigo_infracao, data_infracao, cpf_agente, id_dispositivo, payload) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb)',

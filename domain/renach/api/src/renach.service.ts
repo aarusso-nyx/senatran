@@ -165,6 +165,16 @@ export class RenachService {
           `Processo em ${situacao} não aceita novo exame.`,
         );
       }
+      const already = await trx.query(
+        'select 1 from renach.exame where numero_renach = $1 and tipo_exame = $2',
+        [numeroRenach, tipo],
+      );
+      if (already.rows[0]) {
+        throw businessError(
+          'RENACH.EXAM.ALREADY_RECORDED',
+          `Exame ${tipo} já registrado para o processo.`,
+        );
+      }
       const exame = (body.exame ?? body.avaliacao ?? {}) as Row;
       await this.validateClinicaProfissional(trx, body, tipo);
       const resultado = (exame.resultado as string) ?? 'PENDENTE';
