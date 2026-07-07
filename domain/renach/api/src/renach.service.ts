@@ -34,6 +34,68 @@ export class RenachService {
     return r.rows[0];
   }
 
+  /**
+   * Open a new RENACH process. Assigns a fresh `numeroRenach` (from the DB
+   * sequence) and starts it at ABERTO, from which the existing lifecycle
+   * (elegibilidade → agendamento → exames → …) continues. A WSDenatran
+   * extension beyond the canonical corpus (which only reads existing processes)
+   * — see canonical-mapping.md.
+   */
+  async abrirProcesso(
+    body: Row,
+    idemKey?: string,
+  ): Promise<{ status: number; body: unknown }> {
+    const cpf = body.cpf as string;
+    const tipo = body.tipoProcesso as string;
+    return this.tx.idempotent('renach.abertura', idemKey, async (trx) => {
+      // One active process per (cpf, tipoProcesso): a process still in flight
+      // blocks a duplicate open (terminal APROVADO/REJEITADO do not).
+      const dup = await trx.query(
+        "select 1 from renach.processo where cpf = $1 and tipo_processo = $2 and situacao not in ('APROVADO','REJEITADO') limit 1",
+        [cpf, tipo],
+      );
+      if (dup.rows[0])
+        throw businessError(
+          'RENACH.PROCESS.ALREADY_OPEN',
+          `Já existe processo RENACH ativo para o CPF informado e tipo ${tipo}.`,
+        );
+      const gen = await trx.query<{ numero: string }>(
+        "select 'RN' || lpad(nextval('renach.seq_numero_renach')::text, 11, '0') as numero",
+      );
+      const numeroRenach = gen.rows[0].numero;
+      const resp = {
+        protocolo: protocolo(),
+        numeroRenach,
+        situacao: 'ABERTO',
+        tipoProcesso: tipo,
+        categoriaAtual: (body.categoriaAtual as string) ?? null,
+        categoriaPretendida: (body.categoriaPretendida as string) ?? null,
+        condutor: { cpf },
+      };
+      await trx.query(
+        'insert into renach.processo (numero_renach, cpf, tipo_processo, situacao, categoria_atual, categoria_pretendida, payload) values ($1,$2,$3,$4,$5,$6,$7::jsonb)',
+        [
+          numeroRenach,
+          cpf,
+          tipo,
+          'ABERTO',
+          body.categoriaAtual ?? null,
+          body.categoriaPretendida ?? null,
+          JSON.stringify(resp),
+        ],
+      );
+      await this.tx.audit(trx, {
+        dominio: DOM,
+        entidade: 'renach.processo',
+        entidadeId: numeroRenach,
+        tipoEvento: 'processo.abrir',
+        situacaoNova: 'ABERTO',
+        payload: resp,
+      });
+      return { status: 201, body: resp };
+    });
+  }
+
   async getProcesso(numeroRenach: string): Promise<unknown> {
     const r = await this.db.query<{ payload: Row }>(
       "select jsonb_set(payload, '{situacao}', to_jsonb(situacao)) as payload from renach.processo where numero_renach = $1",

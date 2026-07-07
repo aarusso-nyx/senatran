@@ -16,6 +16,10 @@ create table renach.processo (
 );
 create index idx_renach_processo_cpf on renach.processo (cpf);
 
+-- Mints numeroRenach for processes opened at runtime (POST /v1/renach/processos).
+-- Starts high so minted numbers never collide with the seeded RN########## set.
+create sequence if not exists renach.seq_numero_renach start with 70000000001;
+
 create table renach.clinica (
   codigo_clinica text primary key,
   cnpj           text not null,

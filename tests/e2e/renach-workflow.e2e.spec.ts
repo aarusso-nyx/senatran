@@ -120,3 +120,87 @@ describe('renach workflow (INV-RENACH-001)', () => {
     expect(res.body.message).toContain('RENACH.PROCESS.NOT_FOUND');
   });
 });
+
+// Opening a new RENACH process (POST /v1/renach/processos) — the entry point
+// pec needs to open a process per candidate and continue the lifecycle.
+describe('renach process opening (INV-RENACH-001)', () => {
+  const openBody = (cpf: string) => ({
+    cpf,
+    tipoProcesso: 'RENOVACAO',
+    categoriaAtual: 'B',
+    categoriaPretendida: 'B',
+  });
+
+  it('POST processos → 201 ABERTO with a fresh numeroRenach, then flows on', async () => {
+    const cpf = `9${Date.now().toString().slice(-10)}`;
+    const res = await request(ctx.server)
+      .post('/v1/renach/processos')
+      .set(AUTH)
+      .set('Content-Type', 'application/json')
+      .send(openBody(cpf));
+    expect(res.status).toBe(201);
+    expect(res.body.situacao).toBe('ABERTO');
+    expect(res.body.numeroRenach).toMatch(/^RN\d{11}$/);
+
+    const numero = res.body.numeroRenach;
+    // the minted process is readable...
+    const get = await request(ctx.server)
+      .get(`/v1/renach/processos/${numero}`)
+      .set(AUTH);
+    expect(get.status).toBe(200);
+    // ...and the existing lifecycle continues from ABERTO.
+    const elig = await request(ctx.server)
+      .post(`/v1/renach/processos/${numero}/elegibilidadeExame`)
+      .set(AUTH)
+      .set('Content-Type', 'application/json')
+      .send({ tipoProcesso: 'RENOVACAO' });
+    expect(elig.status).toBe(200);
+    expect(elig.body.elegivelExameMedico).toBe(true);
+  });
+
+  it('second open for the same cpf+tipo → 402 RENACH.PROCESS.ALREADY_OPEN', async () => {
+    const cpf = `9${Date.now().toString().slice(-10)}`;
+    const first = await request(ctx.server)
+      .post('/v1/renach/processos')
+      .set(AUTH)
+      .set('Content-Type', 'application/json')
+      .send(openBody(cpf));
+    expect(first.status).toBe(201);
+    const dup = await request(ctx.server)
+      .post('/v1/renach/processos')
+      .set(AUTH)
+      .set('Content-Type', 'application/json')
+      .send(openBody(cpf));
+    expect(dup.status).toBe(402);
+    expect(dup.body.message).toContain('RENACH.PROCESS.ALREADY_OPEN');
+  });
+
+  it('same Idempotency-Key replays the original open (no duplicate)', async () => {
+    const cpf = `9${Date.now().toString().slice(-10)}`;
+    const key = `e2e-abre-${Date.now()}`;
+    const first = await request(ctx.server)
+      .post('/v1/renach/processos')
+      .set(AUTH)
+      .set('Content-Type', 'application/json')
+      .set('Idempotency-Key', key)
+      .send(openBody(cpf));
+    const replay = await request(ctx.server)
+      .post('/v1/renach/processos')
+      .set(AUTH)
+      .set('Content-Type', 'application/json')
+      .set('Idempotency-Key', key)
+      .send(openBody(cpf));
+    expect(first.status).toBe(201);
+    expect(replay.status).toBe(201);
+    expect(replay.body.numeroRenach).toBe(first.body.numeroRenach);
+  });
+
+  it('missing cpf → 400 (DTO validation)', async () => {
+    const res = await request(ctx.server)
+      .post('/v1/renach/processos')
+      .set(AUTH)
+      .set('Content-Type', 'application/json')
+      .send({ tipoProcesso: 'RENOVACAO' });
+    expect(res.status).toBe(400);
+  });
+});

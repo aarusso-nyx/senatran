@@ -53,6 +53,42 @@ paths:
   # ---------------------------------------------------------------------------
   # RENACH
   # ---------------------------------------------------------------------------
+  /renach/processos:
+    post:
+      tags: [renachProcessos]
+      operationId: abrirProcessoRenach
+      summary: Abrir processo RENACH
+      description: >-
+        Abre um novo processo RENACH para o candidato e retorna o
+        `numeroRenach` atribuído. Extensão WSDenatran (sem equivalente no corpus
+        canônico); ver canonical-mapping.md.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              { $ref: '#/components/schemas/AberturaProcessoRenachRequest' }
+      responses:
+        '201':
+          description: Criado. Processo RENACH aberto em situação ABERTO.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProcessoRenach' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: >-
+            Erro de negócio. `RENACH.PROCESS.ALREADY_OPEN` — já existe processo
+            ativo para o CPF e tipo informados.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
   /renach/processos/{numeroRenach}:
     get:
       tags: [renachProcessos]
@@ -1353,6 +1389,20 @@ components:
     # -----------------------------------------------------------------------
     # RENACH — request schemas
     # -----------------------------------------------------------------------
+    AberturaProcessoRenachRequest:
+      type: object
+      description: Dados para abrir um novo processo RENACH.
+      required: [cpf, tipoProcesso]
+      properties:
+        cpf: { type: string }
+        tipoProcesso: { $ref: '#/components/schemas/TipoProcesso' }
+        categoriaAtual: { type: string }
+        categoriaPretendida: { type: string }
+      example:
+        cpf: '52998224725'
+        tipoProcesso: RENOVACAO
+        categoriaAtual: B
+        categoriaPretendida: B
     ElegibilidadeExameRequest:
       type: object
       description: Dados para verificação de elegibilidade ao exame.

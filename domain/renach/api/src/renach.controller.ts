@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Headers,
+  HttpCode,
   Inject,
   Param,
   Patch,
@@ -14,11 +15,12 @@ import { RenachService } from './renach.service.js';
 import { DtoValidationPipe } from '../../../shared/api/src/common/dto-validation.pipe.js';
 import { ExameMedicoDto } from './dto/exame-medico.dto.js';
 import { AvaliacaoPsicologicaDto } from './dto/avaliacao-psicologica.dto.js';
+import { AberturaProcessoRenachDto } from './dto/abertura-processo.dto.js';
 
 type Body = Record<string, unknown>;
 
 /**
- * RENACH transactional endpoints (13), ported to WSDenatran conventions. Writes
+ * RENACH transactional endpoints (14), ported to WSDenatran conventions. Writes
  * go through RenachService (state machine + idempotency + audit); the dynamic
  * status (201 created / 200 idempotent replay / 202 async) is set from the
  * service result.
@@ -32,12 +34,23 @@ export class RenachController {
     return r.body;
   }
 
+  @Post('processos')
+  async abrirProcesso(
+    @Body(new DtoValidationPipe(AberturaProcessoRenachDto))
+    body: AberturaProcessoRenachDto,
+    @Headers('idempotency-key') key: string | undefined,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    return this.send(res, await this.svc.abrirProcesso({ ...body }, key));
+  }
+
   @Get('processos/:numeroRenach')
   getProcesso(@Param('numeroRenach') n: string) {
     return this.svc.getProcesso(n);
   }
 
   @Post('processos/:numeroRenach/elegibilidadeExame')
+  @HttpCode(200) // read-only check; contract declares 200 (not Nest's POST 201)
   elegibilidade(@Param('numeroRenach') n: string) {
     return this.svc.elegibilidade(n);
   }

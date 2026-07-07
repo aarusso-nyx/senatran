@@ -31,6 +31,7 @@ idempotent writes, state-machine enforcement.
 
 | Reference path (method)                                           | Ported path (`/v1`)                                            | Success |
 | ----------------------------------------------------------------- | -------------------------------------------------------------- | ------- |
+| _(none — WSDenatran extension)_                                   | POST `/renach/processos`                                       | 201     |
 | GET `/renach/processes/{renachNumber}`                            | GET `/renach/processos/{numeroRenach}`                         | 200     |
 | POST `/renach/processes/{renachNumber}/exam-eligibility`          | POST `/renach/processos/{numeroRenach}/elegibilidadeExame`     | 200     |
 | GET `/renach/accredited-clinics`                                  | GET `/renach/clinicasCredenciadas`                             | 200     |
@@ -44,6 +45,16 @@ idempotent writes, state-machine enforcement.
 | POST `/renach/exams/{examId}/rectifications`                      | POST `/renach/exames/{idExame}/retificacoes`                   | 202     |
 | POST `/renach/processes/{renachNumber}/medical-board-referrals`   | POST `/renach/processos/{numeroRenach}/encaminhamentosJunta`   | 202     |
 | POST `/renach/processes/{renachNumber}/medical-board-decisions`   | POST `/renach/processos/{numeroRenach}/pareceresJunta`         | 201     |
+
+> **Extension — `POST /renach/processos`.** The canonical corpus (and the source
+> `openapi.yaml`) only ever _read_ a process by `renachNumber`; processes are
+> pre-provisioned. Consumers that must open a process per candidate (e.g. `pec`)
+> had no entry point, so the mock adds one: it mints a fresh `numeroRenach`,
+> starts the process at `ABERTO`, and the existing lifecycle continues from
+> there. One active process per `(cpf, tipoProcesso)` — a duplicate open returns
+> `402 RENACH.PROCESS.ALREADY_OPEN`. Idempotency-Key de-duplicates true retries.
+> This is a mock convenience; homologation against the official process-opening
+> path/vocabulary remains a private-contract task.
 
 ### RENAINF
 

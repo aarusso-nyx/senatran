@@ -29,6 +29,7 @@ consumers can branch on the code while the envelope stays WSDenatran-uniform.
 | Code                                   | HTTP | When                                               |
 | -------------------------------------- | ---- | -------------------------------------------------- |
 | `RENACH.PROCESS.NOT_FOUND`             | 404  | processo RENACH inexistente.                       |
+| `RENACH.PROCESS.ALREADY_OPEN`          | 402  | já existe processo ativo para o CPF e tipo.        |
 | `RENACH.PROCESS.BLOCKED`               | 402  | processo bloqueado.                                |
 | `RENACH.PROCESS.EXPIRED`               | 402  | processo expirado.                                 |
 | `RENACH.PROCESS.INVALID_STATUS`        | 402  | transição inválida para a situação atual.          |
@@ -72,7 +73,8 @@ consumers can branch on the code while the envelope stays WSDenatran-uniform.
 ## Enforcement status
 
 Actively enforced by the services (each has a test): all `*.NOT_FOUND`,
-`RENACH.PROCESS.INVALID_STATUS`, `RENACH.EXAM.INVALID_TYPE`,
+`RENACH.PROCESS.INVALID_STATUS`, `RENACH.PROCESS.ALREADY_OPEN`,
+`RENACH.EXAM.INVALID_TYPE`,
 `RENACH.EXAM.ALREADY_RECORDED`, `RENACH.CLINIC.NOT_ACCREDITED`/`INACTIVE`,
 `RENACH.EXAMINER.NOT_ACCREDITED`, `RENAINF.AIT.DUPLICATED`,
 `RENAINF.AIT.INVALID_NUMBER`/`INVALID_INFRACTION_CODE` (400 via DTO),
