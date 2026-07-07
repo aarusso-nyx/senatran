@@ -1517,6 +1517,17 @@ components:
             cpf: { type: string }
             nome: { type: string }
             dataNascimento: { type: string, format: date }
+      example:
+        protocolo: RENACH-2026-000123
+        numeroRenach: RS123456789
+        situacao: AGUARDANDO_MEDICO
+        tipoProcesso: RENOVACAO
+        categoriaAtual: B
+        categoriaPretendida: B
+        condutor:
+          cpf: '52998224725'
+          nome: MARIA SILVA SANTOS
+          dataNascimento: '1985-03-14'
     ElegibilidadeExameResponse:
       type: object
       properties:
@@ -1548,6 +1559,15 @@ components:
         restricoes:
           type: array
           items: { $ref: '#/components/schemas/Restricao' }
+      example:
+        protocolo: RENACH-EXAME-2026-000045
+        idExame: 6f1c2a80-0000-4000-8000-000000000045
+        numeroRenach: RS123456789
+        situacao: EXAME_REGISTRADO
+        resultado: APTO
+        dataRealizacao: '2026-07-10T09:30:00.000Z'
+        dataValidade: '2031-07-10'
+        restricoes: []
     ExameList:
       type: object
       properties:
@@ -1562,6 +1582,12 @@ components:
         nome: { type: string }
         uf: { type: string }
         ativa: { type: boolean }
+      example:
+        codigoClinica: RS-CLINIC-0001
+        cnpj: '46931757000108'
+        nome: CLINICA RS-CLINIC-0001
+        uf: PR
+        ativa: true
     ClinicaCredenciadaList:
       type: object
       properties:
@@ -1579,6 +1605,13 @@ components:
         numeroConselho: { type: string }
         uf: { type: string }
         ativo: { type: boolean }
+      example:
+        cpf: '89177194659'
+        nome: CARLOS PEREIRA LIMA
+        conselho: CRM
+        numeroConselho: '52341'
+        uf: PR
+        ativo: true
     ProfissionalCredenciadoList:
       type: object
       properties:
@@ -1804,6 +1837,14 @@ components:
         codigoInfracao: { type: string }
         dataInfracao: { type: string, format: date-time }
         placa: { type: string }
+      example:
+        protocolo: RENAINF-AIT-2026-000777
+        numeroAit: A0001001
+        situacao: AUTUACAO_ABERTA
+        codigoOrgaoAutuador: '204020'
+        codigoInfracao: '74550'
+        dataInfracao: '2024-03-12T14:20:00.000Z'
+        placa: ABC1D23
     ProcessoAdministrativo:
       type: object
       properties:

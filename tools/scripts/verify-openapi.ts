@@ -72,7 +72,82 @@ const walkRefs = (spec: Json, node: unknown, label: string): void => {
   }
 };
 
+// ---- example ↔ schema conformance -----------------------------------------
+// Any `example:` on a component schema must itself satisfy that schema, so the
+// documented samples cannot silently drift from the contract. Strict: undeclared
+// fields, type/enum/format mismatches all fail. (Missing fields are allowed —
+// examples may be representative subsets.)
+const derefSchema = (spec: Json, s: Json): Json => {
+  let cur = s;
+  for (let i = 0; i < 10 && typeof cur?.$ref === 'string'; i++) {
+    let node: unknown = spec;
+    for (const k of cur.$ref.slice(2).split('/')) node = (node as Json)?.[k];
+    cur = (node as Json) ?? {};
+  }
+  return cur;
+};
+
+const checkExample = (
+  spec: Json,
+  value: unknown,
+  schemaIn: Json,
+  path: string,
+  label: string,
+): void => {
+  const s = derefSchema(spec, schemaIn);
+  if (value === null || value === undefined) return;
+  const en = s.enum as unknown[] | undefined;
+  if (Array.isArray(en)) {
+    if (!en.includes(value))
+      fail(`${label} example ${path}: ${JSON.stringify(value)} not in enum`);
+    return;
+  }
+  const type = s.type as string | undefined;
+  if (type === 'array' || s.items) {
+    if (!Array.isArray(value))
+      return fail(`${label} example ${path}: not array`);
+    const items = (s.items as Json) ?? { type: 'string' };
+    value.forEach((v, i) =>
+      checkExample(spec, v, items, `${path}[${i}]`, label),
+    );
+    return;
+  }
+  if (s.properties || type === 'object') {
+    if (typeof value !== 'object' || Array.isArray(value))
+      return fail(`${label} example ${path}: not object`);
+    if (!s.properties) return; // free-form object accepts anything
+    const props = s.properties as Json;
+    for (const [k, v] of Object.entries(value as Json)) {
+      if (!(k in props))
+        fail(`${label} example ${path}.${k}: undeclared field`);
+      else checkExample(spec, v, props[k] as Json, `${path}.${k}`, label);
+    }
+    return;
+  }
+  if (type === 'integer' || type === 'number') {
+    if (typeof value !== 'number')
+      fail(`${label} example ${path}: expected ${type}`);
+    else if (type === 'integer' && !Number.isInteger(value))
+      fail(`${label} example ${path}: expected integer`);
+    return;
+  }
+  if (type === 'boolean') {
+    if (typeof value !== 'boolean')
+      fail(`${label} example ${path}: expected boolean`);
+    return;
+  }
+  if (typeof value !== 'string')
+    return fail(`${label} example ${path}: expected string`);
+  if (value !== '') {
+    if (s.format === 'date' && !/^\d{4}-\d{2}-\d{2}$/.test(value))
+      fail(`${label} example ${path}: expected date (YYYY-MM-DD)`);
+    if (s.format === 'date-time' && !/^\d{4}-\d{2}-\d{2}T/.test(value))
+      fail(`${label} example ${path}: expected date-time`);
+  }
+};
+
 let totalOps = 0;
+let totalExamples = 0;
 const contractOps = new Set<string>(); // "method /path" across both contracts
 
 for (const specFile of SPECS) {
@@ -88,6 +163,15 @@ for (const specFile of SPECS) {
   }
 
   walkRefs(spec, spec, specFile);
+
+  const schemasMap = ((spec.components as Json)?.schemas ?? {}) as Json;
+  for (const [name, schemaRaw] of Object.entries(schemasMap)) {
+    const schema = schemaRaw as Json;
+    if ('example' in schema) {
+      totalExamples += 1;
+      checkExample(spec, schema.example, schema, name, `${specFile} ${name}`);
+    }
+  }
 
   const paths = (spec.paths ?? {}) as Json;
   for (const [pathKey, pathItemRaw] of Object.entries(paths)) {
@@ -185,5 +269,5 @@ if (errors.length > 0) {
 }
 
 console.log(
-  `openapi:check OK — ${totalOps} operations across ${SPECS.length} contracts, all with x-cpf-usuario, a 2xx success and the full error envelope; all $refs resolve; ${implemented.size} controller routes match the contracts (no drift).`,
+  `openapi:check OK — ${totalOps} operations across ${SPECS.length} contracts, all with x-cpf-usuario, a 2xx success and the full error envelope; all $refs resolve; ${totalExamples} schema examples conform; ${implemented.size} controller routes match the contracts (no drift).`,
 );

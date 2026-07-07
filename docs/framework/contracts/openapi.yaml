@@ -2066,6 +2066,20 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Condutor'
+      example:
+        condutores:
+          - cpf: '52998224725'
+            nome: MARIA SILVA SANTOS
+            nomeMae: JOANA SILVA
+            numeroRegistro: '01234567890'
+            situacaoCnh: A
+            descricaoSituacaoCnh: ATIVA
+            categoriaAtual: AB
+            dataValidadeCnh: '2027-05-10T00:00:00.000Z'
+            enderecoUf: RS
+            enderecoMunicipio: '4314902'
+            descricaoEnderecoMunicipio: Porto Alegre
+            ufPrimeiraHabilitacao: RS
 
     CondutorImagemDigital:
       type: object
@@ -2273,6 +2287,23 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Infracao'
+      example:
+        quantidadeInfracoes: 1
+        quantidadeInfracoesReal: 1
+        idUltimoRegistro: 1
+        infracoes:
+          - placa: ABC1D23
+            numeroAutoInfracao: A0001001
+            codigoInfracao: '74550'
+            descricaoInfracao: TRANSITAR EM VELOCIDADE SUPERIOR A MAXIMA
+            descricaoOrgaoAutuador: DER/SP
+            ufOrgaoAutuador: SP
+            dataInfracao: '2024-03-12T14:20:00.000Z'
+            codigoMunicipioInfracao: '4106902'
+            descricaoMunicipioInfracao: Curitiba
+            valorIntegralInfracao: 130.16
+            medicaoReal: 101
+            limitePermitido: 60
 
     InfracaoOcorrencia:
       type: object
@@ -2555,6 +2586,26 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Veiculo'
+      example:
+        quantidadeVeiculo: 1
+        quantidadeVeiculoReal: 1
+        idUltimoRegistro: 1
+        veiculo:
+          - placa: ABC1D23
+            chassi: 9BWZZZ377VT004251
+            codigoRenavam: '00123456780'
+            anoFabricacao: 2018
+            anoModelo: 2019
+            codigoCor: '6'
+            descricaoCor: PRATA
+            codigoMarcaModelo: '852005'
+            descricaoMarcaModelo: TOYOTA/COROLLA
+            codigoMunicipioEmplacamento: '4314902'
+            descricaoMunicipioEmplacamento: Porto Alegre
+            ufJurisdicao: RS
+            nomeProprietario: MARIA SILVA SANTOS
+            indicadorAlarme: false
+            situacao: CIRCULACAO
 
     CodigoSegurancaCrv:
       type: object
