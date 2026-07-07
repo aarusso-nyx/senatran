@@ -15,7 +15,7 @@
  * In P4 this script is extended to cross-check controller routes against the
  * contracts. Exit code 0 = pass, 1 = fail.
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { parse } from 'yaml';
@@ -73,6 +73,7 @@ const walkRefs = (spec: Json, node: unknown, label: string): void => {
 };
 
 let totalOps = 0;
+const contractOps = new Set<string>(); // "method /path" across both contracts
 
 for (const specFile of SPECS) {
   const spec = parse(
@@ -95,6 +96,7 @@ for (const specFile of SPECS) {
       const op = pathItem[method] as Json | undefined;
       if (!op) continue;
       totalOps += 1;
+      contractOps.add(`${method} ${pathKey}`);
       const label = `${specFile} ${method.toUpperCase()} ${pathKey}`;
 
       const params = (op.parameters ?? []) as Json[];
@@ -119,6 +121,63 @@ for (const specFile of SPECS) {
 
 if (totalOps === 0) fail('no operations found in the contracts');
 
+// ---- Controller ↔ contract drift ------------------------------------------
+const repoRoot = resolve(here, '../..');
+
+function walkControllers(dir: string): string[] {
+  if (!existsSync(dir)) return [];
+  const out: string[] = [];
+  for (const entry of readdirSync(dir)) {
+    const p = resolve(dir, entry);
+    if (statSync(p).isDirectory()) out.push(...walkControllers(p));
+    else if (entry.endsWith('.controller.ts') && !entry.endsWith('.spec.ts'))
+      out.push(p);
+  }
+  return out;
+}
+
+/** Normalize a controller base+subpath to the contract path form (after /v1). */
+function toContractPath(base: string, sub: string): string {
+  const joined = [base, sub].filter(Boolean).join('/');
+  let path =
+    '/' + joined.replace(/:([A-Za-z0-9_]+)/g, '{$1}').replace(/\/{2,}/g, '/');
+  path = path.replace(/^\/v1(?=\/|$)/, ''); // strip the /v1 base prefix
+  if (path.length > 1 && path.endsWith('/')) path = path.slice(0, -1);
+  return path || '/';
+}
+
+function controllerOps(): Set<string> {
+  const routes = new Set<string>();
+  const ctrlRe = /@Controller\(\s*(['"`])([^'"`]*)\1/;
+  const methodRe = /@(Get|Post|Put|Patch|Delete)\(\s*(?:(['"`])([^'"`]*)\2)?/g;
+  const files = [
+    resolve(repoRoot, 'domain'),
+    resolve(repoRoot, 'apps'),
+  ].flatMap(walkControllers);
+  for (const file of files) {
+    const src = readFileSync(file, 'utf8');
+    const cm = ctrlRe.exec(src);
+    if (!cm) continue;
+    const base = cm[2];
+    if (base === 'health') continue; // operational, not part of the contract
+    let m: RegExpExecArray | null;
+    while ((m = methodRe.exec(src)) !== null) {
+      routes.add(`${m[1].toLowerCase()} ${toContractPath(base, m[3] ?? '')}`);
+    }
+  }
+  return routes;
+}
+
+const implemented = controllerOps();
+for (const route of implemented) {
+  if (!contractOps.has(route))
+    fail(`controller route not in any contract: ${route}`);
+}
+for (const route of contractOps) {
+  if (!implemented.has(route))
+    fail(`contract path not implemented by a controller: ${route}`);
+}
+
 if (errors.length > 0) {
   console.error(`openapi:check FAILED (${errors.length} issue(s)):`);
   for (const e of errors) console.error(`  - ${e}`);
@@ -126,5 +185,5 @@ if (errors.length > 0) {
 }
 
 console.log(
-  `openapi:check OK — ${totalOps} operations across ${SPECS.length} contracts, all with x-cpf-usuario, a 2xx success and the full error envelope; all $refs resolve.`,
+  `openapi:check OK — ${totalOps} operations across ${SPECS.length} contracts, all with x-cpf-usuario, a 2xx success and the full error envelope; all $refs resolve; ${implemented.size} controller routes match the contracts (no drift).`,
 );
