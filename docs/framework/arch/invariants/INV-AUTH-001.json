@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "1.0.0",
+  "version": "1.0.0",
+  "id": "INV-AUTH-001",
+  "domain": "AUTH",
+  "severity": "hard-fail",
+  "type": "security",
+  "title": "Every endpoint requires x-cpf-usuario; certificate simulation is enforceable",
+  "statement": "Every WSDenatran operation requires the `x-cpf-usuario` header (11-digit CPF); a missing or malformed value yields HTTP 401 with the `{ returnCode, message }` envelope. When `AUTH_CERT_SIMULATION=on`, the `x-client-cert-cn` header must match an allowlisted Common Name (mock.usuario_autorizado or AUTH_DEV_CERT_CNS), else 401. The reserved x-cpf-usuario value 00000000000 forces 401. The health endpoint is exempt.",
+  "rationale": "The real WSDenatran authenticates with an mTLS certificate plus the operator CPF; a 401 means either failed. Consumers (pec, teat) must be able to exercise realistic auth success and failure paths against the mock, so the header simulation must be enforced uniformly and never weakened to make a test pass.",
+  "status": "active",
+  "verification": {
+    "required_suites": ["api", "e2e"],
+    "oracle": "tests"
+  },
+  "authority": {
+    "docs": [
+      {
+        "doc": "docs/framework/contracts/auth.md",
+        "anchor": "required-on-every-request"
+      },
+      { "doc": "GOVERNANCE.md", "anchor": "5-hard-fails-non-negotiable" }
+    ]
+  },
+  "scope": {
+    "components": ["api", "auth"],
+    "code_areas": ["apps/api/src/**", "domain/**/api/src/**"]
+  },
+  "change_policy": {
+    "breaking_change_requires": [
+      "doc_update",
+      "test_update",
+      "human_approval",
+      "adr"
+    ],
+    "test_weakening_allowed": false,
+    "human_approval_required": true
+  },
+  "tags": ["auth", "security", "header-simulation", "D-0004"]
+}

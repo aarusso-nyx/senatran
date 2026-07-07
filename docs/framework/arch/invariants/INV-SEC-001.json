@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "1.0.0",
+  "version": "1.0.0",
+  "id": "INV-SEC-001",
+  "domain": "SEC",
+  "severity": "hard-fail",
+  "type": "security",
+  "title": "Dev-only: never real endpoints or real personal data",
+  "statement": "The service is a development mock. It must never be configured to call real SENATRAN/DENATRAN/SERPRO endpoints, and its database must never contain real personal data. All seeded identities are synthetic. No production credentials, certificates, or hostnames are committed. Configuration defaults target a local database only.",
+  "rationale": "The mock reproduces a government registry API surface that in production carries sensitive personal data (drivers, vehicles, infractions). Confusing the mock for the real integration, or loading real data into it, would be a privacy and compliance breach.",
+  "status": "active",
+  "verification": {
+    "required_suites": ["unit"],
+    "oracle": "static_analysis"
+  },
+  "authority": {
+    "docs": [
+      { "doc": "GOVERNANCE.md", "anchor": "5-hard-fails-non-negotiable" },
+      { "doc": "README.md", "anchor": "what-it-mocks" }
+    ]
+  },
+  "scope": {
+    "components": ["infra", "config"],
+    "code_areas": ["apps/api/src/**", ".env.example", "database/**"]
+  },
+  "change_policy": {
+    "breaking_change_requires": ["human_approval", "adr"],
+    "test_weakening_allowed": false,
+    "human_approval_required": true
+  },
+  "tags": ["security", "privacy", "dev-only"]
+}

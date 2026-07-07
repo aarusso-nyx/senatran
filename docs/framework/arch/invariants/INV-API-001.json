@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "1.0.0",
+  "version": "1.0.0",
+  "id": "INV-API-001",
+  "domain": "API",
+  "severity": "gate",
+  "type": "api_contract",
+  "title": "Thin controllers over prepared contract views",
+  "statement": "Each of the 57 operations is served by a controller method that parses params and calls a service, and a service that runs exactly one parameterized query against a `contract.*` view/materialized view returning a pre-shaped `payload`. Response shaping (jsonb_build_object, json_agg, COALESCE, código→descrição joins, the list envelope) lives in SQL. TypeScript contains no domain/business logic beyond binding query params and the empty-result → 404 decision.",
+  "rationale": "Keeping shaping in prepared views makes the response contract testable in SQL, keeps the service layer trivial and uniform, and prevents drift between endpoints. It is the core architectural decision (D-0003) the user mandated.",
+  "status": "active",
+  "verification": {
+    "required_suites": ["unit", "int"],
+    "oracle": "tests"
+  },
+  "authority": {
+    "docs": [
+      {
+        "doc": "docs/framework/arch/contract-views.md",
+        "anchor": "two-layers"
+      },
+      { "doc": "CODESTYLE.md", "anchor": "nestjs-module-shape" }
+    ]
+  },
+  "scope": {
+    "components": ["api", "db"],
+    "code_areas": ["domain/**/api/src/**", "database/ddl/**"]
+  },
+  "change_policy": {
+    "breaking_change_requires": ["doc_update", "test_update", "human_approval"],
+    "test_weakening_allowed": false,
+    "human_approval_required": true
+  },
+  "tags": ["api", "contract-views", "thin-controllers", "D-0003"]
+}

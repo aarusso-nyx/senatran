@@ -1,0 +1,100 @@
+{
+  "schemaVersion": "1.0.0",
+  "version": "0.1.0",
+  "invariants": [
+    {
+      "id": "INV-AUTH-001",
+      "tests": [
+        {
+          "suite": "e2e",
+          "path": "tests/e2e/auth.e2e.spec.ts",
+          "names": ["INV-AUTH-001"],
+          "assertions": [
+            "requests without x-cpf-usuario return 401 with {returnCode,message}",
+            "x-client-cert-cn not allowlisted returns 401 when AUTH_CERT_SIMULATION=on",
+            "x-cpf-usuario 00000000000 forces 401"
+          ]
+        }
+      ],
+      "code_areas": [
+        "apps/api/src/common/guards/**",
+        "domain/shared/api/src/**"
+      ]
+    },
+    {
+      "id": "INV-HTTP-001",
+      "tests": [
+        {
+          "suite": "e2e",
+          "path": "tests/e2e/error-envelope.e2e.spec.ts",
+          "names": ["INV-HTTP-001"],
+          "assertions": [
+            "every non-2xx body is exactly {returnCode,message}",
+            "returnCode equals the HTTP status for 400/401/402/404/500"
+          ]
+        }
+      ],
+      "code_areas": ["apps/api/src/common/filters/**"]
+    },
+    {
+      "id": "INV-API-001",
+      "tests": [
+        {
+          "suite": "int",
+          "path": "tests/integration/contract-views.integration.spec.ts",
+          "names": ["INV-API-001"],
+          "assertions": [
+            "each contract.* view returns a payload matching its OpenAPI schema",
+            "services issue a single parameterized query per endpoint"
+          ]
+        }
+      ],
+      "code_areas": ["domain/**/api/src/**", "database/ddl/**"]
+    },
+    {
+      "id": "INV-DATA-001",
+      "tests": [
+        {
+          "suite": "unit",
+          "path": "tests/unit/seed-formats.spec.ts",
+          "names": ["INV-DATA-001"],
+          "assertions": [
+            "generated CPF/CNPJ pass mod-11 check-digit validation",
+            "regenerating seeds yields byte-identical SQL"
+          ]
+        }
+      ],
+      "code_areas": ["tools/scripts/**", "database/seed/**"]
+    },
+    {
+      "id": "INV-SCEN-001",
+      "tests": [
+        {
+          "suite": "e2e",
+          "path": "tests/e2e/scenarios.e2e.spec.ts",
+          "names": ["INV-SCEN-001"],
+          "assertions": [
+            "present id -> 200, absent -> 404, malformed -> 400",
+            "magic keys force 402/500 per scenarios.md"
+          ]
+        }
+      ],
+      "code_areas": ["apps/api/src/common/**", "database/seed/**"]
+    },
+    {
+      "id": "INV-SEC-001",
+      "tests": [
+        {
+          "suite": "unit",
+          "path": "tests/unit/dev-only-config.spec.ts",
+          "names": ["INV-SEC-001"],
+          "assertions": [
+            "default config targets a local database only",
+            "no real SENATRAN hostnames or credentials are committed"
+          ]
+        }
+      ],
+      "code_areas": ["apps/api/src/**", ".env.example"]
+    }
+  ]
+}

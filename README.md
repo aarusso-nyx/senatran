@@ -13,7 +13,7 @@ reproducible integration target during development and testing.
 
 ## What it mocks
 
-The official _WS Denatran — API-Doc v1_ contract: **~59 `GET` endpoints** under
+The official _WS Denatran — API-Doc v1_ contract: **57 `GET` endpoints** under
 `/v1`, grouped as `veiculos`, `condutores`, `infracoes`, `indicadores`,
 `restricoesJudiciaisAtivas`, `rouboFurto`, `ConsultaCSV`, and
 `autorizacoesAlteracaoVeiculo`. Every endpoint requires the `x-cpf-usuario` header;

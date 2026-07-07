@@ -14,5 +14,8 @@
     "DEVAI",
     "HARNESS"
   ],
-  "client": []
+  "client": [
+    "HTTP",
+    "SCEN"
+  ]
 }

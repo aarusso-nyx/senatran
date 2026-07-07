@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "1.0.0",
+  "version": "1.0.0",
+  "id": "INV-HTTP-001",
+  "domain": "HTTP",
+  "severity": "hard-fail",
+  "type": "error_semantics",
+  "title": "Non-2xx responses use the WSDenatran error envelope",
+  "statement": "Every non-2xx response body is exactly `{ returnCode: integer, message: string }`, produced by a single global exception filter — never a raw string or a NestJS default error shape. Status semantics follow the contract: 400 requisição inválida, 401 não autorizado, 402 erro de negócio, 404 não encontrado, 500 erro interno. `returnCode` equals the HTTP status.",
+  "rationale": "The official contract specifies this envelope for all error codes. Client error handling in pec/teat depends on it being uniform and stable across all 57 endpoints; a leaked framework error shape or a bare string would break consumers.",
+  "status": "active",
+  "verification": {
+    "required_suites": ["api", "e2e"],
+    "oracle": "tests"
+  },
+  "authority": {
+    "docs": [
+      { "doc": "GOVERNANCE.md", "anchor": "5-hard-fails-non-negotiable" },
+      { "doc": "README.md", "anchor": "what-it-mocks" }
+    ]
+  },
+  "scope": {
+    "components": ["api"],
+    "code_areas": ["apps/api/src/**", "domain/**/api/src/**"]
+  },
+  "change_policy": {
+    "breaking_change_requires": [
+      "doc_update",
+      "test_update",
+      "human_approval",
+      "adr"
+    ],
+    "test_weakening_allowed": false,
+    "human_approval_required": true
+  },
+  "tags": ["http", "error-envelope", "api", "D-0002"]
+}

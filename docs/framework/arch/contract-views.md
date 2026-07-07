@@ -1,0 +1,190 @@
+# Contract views — SENATRAN mock
+
+How the 57 endpoints are served by prepared PostgreSQL views so that controllers
+and services stay thin (DESIGN-DECISIONS D-0003). This is the P2 catalog; the SQL
+lives in `database/ddl/9x-contract-*.sql` (P3).
+
+## Two layers
+
+**Layer 1 — base object views (`contract.v_<entity>_base`).** One per entity
+(15 total). Each row is a domain row joined to every `ref_*` table it needs, with
+a single `payload jsonb` column holding the fully-shaped response object (camelCase
+keys, source typos preserved, `codigo`/`descricao` resolved, `COALESCE` defaults
+applied). Key columns are exposed alongside `payload` for filtering. The heavy
+ones — `veiculo`, `condutor`, `infracao` — are **materialized views** refreshed by
+`apply.sh`; the rest are plain views.
+
+```sql
+-- shape of a base view (illustrative)
+create materialized view contract.v_veiculo_base as
+select v.chassi, v.placa, v.codigo_renavam, v.numero_motor, v.numero_cambio,
+       v.numero_identificacao_proprietario, v.codigo_tipo_proprietario,
+       v.ind_alarme, v.ind_roubo_furto, v.ind_transferencia, /* … */
+       jsonb_build_object(
+         'mapeamentoAutomatico', false,
+         'chassi', v.chassi,
+         'placa', v.placa,
+         'descricaoCor', coalesce(cor.descricao, 'INDISPONÍVEL'),
+         /* … all ~90 Veiculo fields … */
+       ) as payload
+from senatran.veiculo v
+left join senatran.ref_cor cor on cor.codigo = v.codigo_cor
+/* … other ref joins … */;
+```
+
+**Layer 2 — per-endpoint views (`contract.v_<endpoint>`).** One per endpoint
+(57 total). Each is a thin derivation of a base view that (a) exposes exactly the
+endpoint's key column(s) and (b) emits the endpoint's final `payload jsonb`:
+
+- **`envelope+lista`** — groups base rows by the key and wraps them:
+  `jsonb_build_object('quantidadeVeiculo', count(*), 'quantidadeVeiculoReal',
+count(*), 'idUltimoRegistro', max(id), 'veiculo', jsonb_agg(payload order by id))`.
+- **`objeto`** — selects the single base `payload` for the composite key.
+- **`indicador (obj)`** — builds the small `{indicador…}` object from the vehicle's
+  indicator columns.
+- **`boolean`** — selects one boolean column as the bare JSON body.
+
+The service then runs exactly one parameterized query:
+
+```ts
+// list endpoint
+const { rows } = await db.query(
+  'select payload from contract.v_veiculo_by_placa where placa = $1',
+  [placa],
+);
+// rows[0]?.payload is the complete envelope, or undefined → 404
+```
+
+No shaping, aggregation, or COALESCE lives in TypeScript — only the WHERE values
+and the 404/empty decision.
+
+## Pagination
+
+Endpoints marked `⟳` accept `idUltimoRegistro` (query, int64). The per-endpoint
+view exposes the base `id`; the service adds `and id > $2 order by id limit N` and
+sets the envelope's `idUltimoRegistro` to the last returned id. Non-paginated
+endpoints ignore it.
+
+## Scenario resolution vs. views
+
+Magic-key forcing (`scenarios.md`) happens in the guard/filter **before** the view
+query, so contract views only ever model the happy path + natural 404 (empty
+result). Views never encode error scenarios.
+
+## Endpoint → view catalog
+
+### veiculos (20)
+
+| Endpoint view                                            | Path (após /v1)                                                                                 | Chaves                                   | Forma          | Base                  |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------------- | -------------- | --------------------- |
+| `contract.v_veiculo_by_cambio`                           | `/veiculos/cambio/{cambio}`                                                                     | cambio ⟳                                 | envelope+lista | `veiculo`             |
+| `contract.v_veiculo_by_chassi`                           | `/veiculos/chassi/{chassi}`                                                                     | chassi ⟳                                 | envelope+lista | `veiculo`             |
+| `contract.v_veiculo_codigo_seguranca_crv_by_cnpj`        | `/veiculos/codigoSegurancaCrv/{codigoSegurancaCrv}/cnpj/{cnpj}/renavam/{renavam}/placa/{placa}` | codigoSegurancaCrv, cnpj, renavam, placa | objeto         | `csv_seguranca`       |
+| `contract.v_veiculo_codigo_seguranca_crv_by_cpf`         | `/veiculos/codigoSegurancaCrv/{codigoSegurancaCrv}/cpf/{cpf}/renavam/{renavam}/placa/{placa}`   | codigoSegurancaCrv, cpf, renavam, placa  | objeto         | `csv_seguranca`       |
+| `contract.v_comunicacao_venda_by_cnpj`                   | `/veiculos/comunicacaoVenda/cnpj/{cnpj}/renavam/{renavam}/placa/{placa}`                        | cnpj, placa, renavam                     | objeto         | `comunicacao_venda`   |
+| `contract.v_comunicacao_venda_by_cpf`                    | `/veiculos/comunicacaoVenda/cpf/{cpf}/renavam/{renavam}/placa/{placa}`                          | cpf, placa, renavam                      | objeto         | `comunicacao_venda`   |
+| `contract.v_endereco_possuidor_by_placa`                 | `/veiculos/enderecoPossuidor/placa/{placa}`                                                     | placa                                    | objeto         | `endereco_possuidor`  |
+| `contract.v_endereco_possuidor_by_placa_and_renavam`     | `/veiculos/enderecoPossuidor/placa/{placa}/renavam/{renavam}`                                   | renavam, placa                           | objeto         | `endereco_possuidor`  |
+| `contract.v_veiculo_by_motor`                            | `/veiculos/motor/{motor}`                                                                       | motor ⟳                                  | envelope+lista | `veiculo`             |
+| `contract.v_multa_interestadual_by_cnpj`                 | `/veiculos/multaInterestadual/cnpj/{cnpj}/renavam/{renavam}/placa/{placa}`                      | cnpj, placa, renavam                     | objeto         | `multa_interestadual` |
+| `contract.v_multa_interestadual_by_cpf`                  | `/veiculos/multaInterestadual/cpf/{cpf}/renavam/{renavam}/placa/{placa}`                        | cpf, placa, renavam                      | objeto         | `multa_interestadual` |
+| `contract.v_veiculo_by_placa`                            | `/veiculos/placa/{placa}`                                                                       | placa ⟳                                  | envelope+lista | `veiculo`             |
+| `contract.v_veiculo_by_proprietario_cnpj_chassi_renavam` | `/veiculos/proprietario/cnpj/{cnpj}/chassi/{chassi}/renavam/{renavam}`                          | cnpj, chassi, renavam                    | objeto         | `veiculo`             |
+| `contract.v_veiculo_by_proprietario_cnpj_placa_renavam`  | `/veiculos/proprietario/cnpj/{cnpj}/placa/{placa}/renavam/{renavam}`                            | cnpj, placa, renavam                     | objeto         | `veiculo`             |
+| `contract.v_veiculos_by_proprietario_cnpj`               | `/veiculos/proprietario/cnpj/{identificacao}`                                                   | identificacao ⟳                          | envelope+lista | `veiculo`             |
+| `contract.v_veiculo_by_proprietario_cpf_chassi_renavam`  | `/veiculos/proprietario/cpf/{cpf}/chassi/{chassi}/renavam/{renavam}`                            | cpf, chassi, renavam                     | objeto         | `veiculo`             |
+| `contract.v_veiculo_by_proprietario_cpf_placa_renavam`   | `/veiculos/proprietario/cpf/{cpf}/placa/{placa}/renavam/{renavam}`                              | cpf, placa, renavam                      | objeto         | `veiculo`             |
+| `contract.v_veiculos_by_proprietario_cpf`                | `/veiculos/proprietario/cpf/{identificacao}`                                                    | identificacao ⟳                          | envelope+lista | `veiculo`             |
+| `contract.v_veiculo_recall_by_chassi`                    | `/veiculos/recall/chassi/{chassi}`                                                              | chassi                                   | objeto         | `recall`              |
+| `contract.v_veiculo_by_renavam`                          | `/veiculos/renavam/{renavam}`                                                                   | renavam ⟳                                | envelope+lista | `veiculo`             |
+
+### condutores (12)
+
+| Endpoint view                                                 | Path (após /v1)                                                                               | Chaves                                  | Forma          | Base                        |
+| ------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | --------------------------------------- | -------------- | --------------------------- |
+| `contract.v_condutores_by_cpf`                                | `/condutores/cpf/{cpf}`                                                                       | cpf ⟳                                   | envelope+lista | `condutor`                  |
+| `contract.v_condutores_by_cpf_and_registro_cnh`               | `/condutores/cpf/{cpf}/registroCnh/{numeroRegistroCnh}`                                       | cpf, numeroRegistroCnh ⟳                | envelope+lista | `condutor`                  |
+| `contract.v_condutores_by_formulario_renach`                  | `/condutores/formularioRenach/{formularioRenach}`                                             | formularioRenach ⟳                      | envelope+lista | `condutor`                  |
+| `contract.v_condutor_imagens_by_cpf_registro_cnh_seguranca`   | `/condutores/imagens/cpf/{cpf}/registroCnh/{numeroRegistro}/segurancaCnh/{numeroSeguranca}`   | cpf, numeroRegistro, numeroSeguranca    | objeto         | `condutor_imagem`           |
+| `contract.v_condutores_by_impedimento`                        | `/condutores/impedimento/{impedimento}`                                                       | impedimento ⟳                           | envelope+lista | `condutor`                  |
+| `contract.v_condutor_infracoes_by_registro_cnh`               | `/condutores/infracoes/registroCnh/{numeroRegistroCnh}`                                       | numeroRegistroCnh                       | objeto         | `condutor_infracao_extrato` |
+| `contract.v_condutores_by_dados_identificatorios`             | `/condutores/nomeCondutor/{nomeCondutor}/dataNascimento/{dataNascimento}/nomeMae/{nomeMae}`   | nomeCondutor, dataNascimento, nomeMae ⟳ | envelope+lista | `condutor`                  |
+| `contract.v_condutores_by_pgu`                                | `/condutores/pgu/{pgu}`                                                                       | pgu ⟳                                   | envelope+lista | `condutor`                  |
+| `contract.v_condutores_by_pid`                                | `/condutores/pid/{pid}`                                                                       | pid ⟳                                   | envelope+lista | `condutor`                  |
+| `contract.v_condutores_by_registro_cnh`                       | `/condutores/registroCnh/{numeroRegistroCnh}`                                                 | numeroRegistroCnh ⟳                     | envelope+lista | `condutor`                  |
+| `contract.v_condutor_retrato_by_cpf_registro_cnh_seguranca`   | `/condutores/retrato/cpf/{cpf}/registroCnh/{numeroRegistro}/segurancaCnh/{numeroSeguranca}`   | cpf, numeroRegistro, numeroSeguranca    | objeto         | `condutor_imagem`           |
+| `contract.v_condutor_validacao_by_cpf_registro_cnh_seguranca` | `/condutores/validacao/cpf/{cpf}/registroCnh/{numeroRegistro}/segurancaCnh/{numeroSeguranca}` | cpf, numeroRegistro, numeroSeguranca    | objeto         | `condutor_imagem`           |
+
+### infracoes (10)
+
+| Endpoint view                                     | Path (após /v1)                                                                             | Chaves                                | Forma          | Base                  |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------- | -------------- | --------------------- |
+| `contract.v_infracoes_by_ait`                     | `/infracoes/ait/{autoInfracao}/orgaoAutuador/{orgao}/infracao/{codigoInfracao}`             | orgao, autoInfracao, codigoInfracao ⟳ | envelope+lista | `infracao`            |
+| `contract.v_infracoes_by_cnpj`                    | `/infracoes/cnpj/{cnpj}`                                                                    | cnpj ⟳                                | envelope+lista | `infracao`            |
+| `contract.v_infracoes_by_cpf`                     | `/infracoes/cpf/{cpf}`                                                                      | cpf ⟳                                 | envelope+lista | `infracao`            |
+| `contract.v_infracoes_by_habilitacao_estrangeira` | `/infracoes/habilitacaoEstrangeira/{identificacao}`                                         | identificacao ⟳                       | envelope+lista | `infracao`            |
+| `contract.v_infracao_ocorrencias_by_ait`          | `/infracoes/ocorrencias/ait/{autoInfracao}/orgaoAutuador/{orgao}/infracao/{codigoInfracao}` | orgao, autoInfracao, codigoInfracao   | objeto         | `infracao_ocorrencia` |
+| `contract.v_infracao_pagamentos_by_ait`           | `/infracoes/pagamentos/ait/{autoInfracao}/orgaoAutuador/{orgao}/infracao/{codigoInfracao}`  | orgao, autoInfracao, codigoInfracao   | objeto         | `infracao_pagamento`  |
+| `contract.v_infracoes_by_pgu_and_uf`              | `/infracoes/pgu/{pgu}/uf/{uf}`                                                              | pgu, uf ⟳                             | envelope+lista | `infracao`            |
+| `contract.v_infracoes_by_placa_and_exigibilidade` | `/infracoes/placa/{placa}/exigibilidade/{situacaoExigibilidade}`                            | placa, situacaoExigibilidade ⟳        | envelope+lista | `infracao`            |
+| `contract.v_infracoes_by_registro_cnh`            | `/infracoes/registroCnh/{cnh}`                                                              | cnh ⟳                                 | envelope+lista | `infracao`            |
+| `contract.v_infracoes_by_renainf`                 | `/infracoes/renainf/{numeroRenainf}`                                                        | numeroRenainf ⟳                       | envelope+lista | `infracao`            |
+
+### indicadores (8)
+
+| Endpoint view                                       | Path (após /v1)                                  | Chaves | Forma           | Base      |
+| --------------------------------------------------- | ------------------------------------------------ | ------ | --------------- | --------- |
+| `contract.v_indicador_alarme_by_chassi`             | `/indicadores/alarme/chassi/{chassi}`            | chassi | boolean         | `veiculo` |
+| `contract.v_indicador_alarme_by_placa`              | `/indicadores/alarme/placa/{placa}`              | placa  | boolean         | `veiculo` |
+| `contract.v_indicador_restricao_judicial_by_chassi` | `/indicadores/restricaoJudicial/chassi/{chassi}` | chassi | indicador (obj) | `veiculo` |
+| `contract.v_indicador_restricao_judicial_by_placa`  | `/indicadores/restricaoJudicial/placa/{placa}`   | placa  | indicador (obj) | `veiculo` |
+| `contract.v_indicador_roubo_furto_by_chassi`        | `/indicadores/rouboFurto/chassi/{chassi}`        | chassi | boolean         | `veiculo` |
+| `contract.v_indicador_roubo_furto_by_placa`         | `/indicadores/rouboFurto/placa/{placa}`          | placa  | boolean         | `veiculo` |
+| `contract.v_indicador_sinistro_by_chassi`           | `/indicadores/sinistro/chassi/{chassi}`          | chassi | indicador (obj) | `veiculo` |
+| `contract.v_indicador_sinistro_by_placa`            | `/indicadores/sinistro/placa/{placa}`            | placa  | indicador (obj) | `veiculo` |
+
+### consultaCsv (2)
+
+| Endpoint view                       | Path (após /v1)                | Chaves | Forma          | Base            |
+| ----------------------------------- | ------------------------------ | ------ | -------------- | --------------- |
+| `contract.v_consulta_csv_by_chassi` | `/ConsultaCSV/chassi/{chassi}` | chassi | envelope+lista | `csv_seguranca` |
+| `contract.v_consulta_csv_by_placa`  | `/ConsultaCSV/placa/{placa}`   | placa  | envelope+lista | `csv_seguranca` |
+
+### restricoesJudiciaisAtivas (2)
+
+| Endpoint view                                                 | Path (após /v1)                                              | Chaves           | Forma  | Base                 |
+| ------------------------------------------------------------- | ------------------------------------------------------------ | ---------------- | ------ | -------------------- |
+| `contract.v_restricoes_judiciais_ativas_by_placa`             | `/restricoesJudiciaisAtivas/placa/{placa}`                   | placa ⟳          | objeto | `restricao_judicial` |
+| `contract.v_restricoes_judiciais_ativas_by_placa_and_renavam` | `/restricoesJudiciaisAtivas/placa/{placa}/renavam/{renavam}` | renavam, placa ⟳ | objeto | `restricao_judicial` |
+
+### rouboFurto (2)
+
+| Endpoint view                                | Path (após /v1)                        | Chaves   | Forma  | Base                     |
+| -------------------------------------------- | -------------------------------------- | -------- | ------ | ------------------------ |
+| `contract.v_roubo_furto_em_aberto_by_chassi` | `/rouboFurto/emAberto/chassi/{chassi}` | chassi ⟳ | objeto | `roubo_furto_ocorrencia` |
+| `contract.v_roubo_furto_em_aberto_by_placa`  | `/rouboFurto/emAberto/placa/{placa}`   | placa ⟳  | objeto | `roubo_furto_ocorrencia` |
+
+### autorizacoesAlteracaoVeiculo (1)
+
+| Endpoint view                      | Path (após /v1)                                      | Chaves | Forma          | Base                  |
+| ---------------------------------- | ---------------------------------------------------- | ------ | -------------- | --------------------- |
+| `contract.v_alteracoes_permitidas` | `/autorizacoesAlteracaoVeiculo/alteracoesPermitidas` | —      | envelope+lista | `alteracao_permitida` |
+
+## Base-view coverage
+
+| Base view                                                                                                 | Serves endpoints                                                                     | Materialized |
+| --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ------------ |
+| `v_veiculo_base`                                                                                          | veiculos (placa, chassi, renavam, motor, cambio, proprietario×4) + all 8 indicadores | ✅           |
+| `v_condutor_base`                                                                                         | condutores (cpf, registroCnh, renach, impedimento, pgu, pid, dados)                  | ✅           |
+| `v_infracao_base`                                                                                         | infracoes (ait, cpf, cnpj, registroCnh, renainf, pgu/uf, placa, hab. estrangeira)    | ✅           |
+| `v_infracao_ocorrencia_base` / `v_infracao_pagamento_base`                                                | infracoes ocorrencias / pagamentos                                                   | —            |
+| `v_condutor_imagem_base`                                                                                  | condutores imagens / retrato / validacao                                             | —            |
+| `v_condutor_infracao_extrato_base`                                                                        | condutores/infracoes/registroCnh                                                     | —            |
+| `v_csv_seguranca_base`                                                                                    | veiculos/codigoSegurancaCrv×2 + ConsultaCSV×2                                        | —            |
+| `v_comunicacao_venda_base` / `v_endereco_possuidor_base` / `v_multa_interestadual_base` / `v_recall_base` | respective veiculos sub-resources                                                    | —            |
+| `v_restricao_judicial_base`                                                                               | restricoesJudiciaisAtivas×2                                                          | —            |
+| `v_roubo_furto_ocorrencia_base`                                                                           | rouboFurto/emAberto×2                                                                | —            |
+| `v_alteracao_permitida_base`                                                                              | autorizacoesAlteracaoVeiculo                                                         | —            |
+
+Refresh order (in `apply.sh`, after seeds): the three materialized base views, then
+any per-endpoint views built on them. Per-endpoint views are plain views (cheap).

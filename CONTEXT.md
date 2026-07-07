@@ -41,7 +41,8 @@ domain/shared/api/src/   config (env), Database (pg Pool), guards, filters, mapp
       -> Database.query(sql, params)
 database/                PostgreSQL DDL: senatran.* tables + reference data,
                          mock.* (usuario_autorizado, scenario_key),
-                         contract.* views/matviews (one per endpoint)
+                         contract.* base object views (matviews) + 57
+                         per-endpoint views
 ```
 
 ## Layout

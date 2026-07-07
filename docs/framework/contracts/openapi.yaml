@@ -2117,7 +2117,8 @@ components:
         anelarDireito: { $ref: '#/components/schemas/CondutorImagemDigital' }
         minimoDireito: { $ref: '#/components/schemas/CondutorImagemDigital' }
         polegarEsquerdo: { $ref: '#/components/schemas/CondutorImagemDigital' }
-        indicadorEsquerdo: { $ref: '#/components/schemas/CondutorImagemDigital' }
+        indicadorEsquerdo:
+          { $ref: '#/components/schemas/CondutorImagemDigital' }
         medioEsquerdo: { $ref: '#/components/schemas/CondutorImagemDigital' }
         anelarEsquerdo: { $ref: '#/components/schemas/CondutorImagemDigital' }
         minimoEsquerdo: { $ref: '#/components/schemas/CondutorImagemDigital' }

@@ -19,7 +19,7 @@ full DEVAI tier3 bootstrap · standalone plain `pg` · thin controllers over
 
 ## Surface (from the official PDF)
 
-~59 GET endpoints under `/v1`: `veiculos` (19), `condutores` (13), `infracoes`
+57 GET endpoints under `/v1`: `veiculos` (20), `condutores` (12), `infracoes`
 (10), `indicadores` (8), `ConsultaCSV` (2), `restricoesJudiciaisAtivas` (2),
 `rouboFurto` (2), `autorizacoesAlteracaoVeiculo` (1). Every endpoint requires
 `x-cpf-usuario`. Status codes 200/400/401/402/404/500; non-2xx =
@@ -40,23 +40,33 @@ full DEVAI tier3 bootstrap · standalone plain `pg` · thin controllers over
 **Review checkpoints:** pause for human review after **P1** (contract) and after
 **P2** (consolidated design) before writing DDL and services.
 
-## Design summary (see DESIGN-DECISIONS.md)
+## Design summary (finalized in P2 — see `docs/framework/arch/`)
 
-- **Thin controllers → `contract.*` views.** One `SELECT` per endpoint against a
-  view/matview emitting exact JSON via `jsonb_build_object`/`json_agg`.
+- **Thin controllers → `contract.*` views.** Two layers: 15 base object views
+  (matviews for veiculo/condutor/infracao) pre-shape each entity's `payload jsonb`;
+  57 per-endpoint views derive the final body (envelope / object / boolean). The
+  service runs one `select payload from contract.v_<endpoint> where <key>=$1`.
+  Full catalog in `docs/framework/arch/contract-views.md`.
 - **Auth:** global `CpfUsuarioGuard` requires `x-cpf-usuario`; optional cert-CN
   allowlist toggled by `AUTH_CERT_SIMULATION`. Global filter renders
   `{ returnCode, message }`.
 - **Scenarios:** data-driven (present→200, absent→404) + seeded `mock.scenario_key`
   magic keys forcing 401/402/404/500, documented for siblings.
-- **Data model:** schema `senatran` (veiculo, proprietario, condutor + ocorrências/
-  cursos, infracao + ocorrências/pagamentos, restricao_judicial, indicador_veiculo,
-  alteracao_permitida, csv_seguranca, endereco_possuidor, comunicacao_venda,
-  recall) + reference tables (uf, municipio, marca_modelo, cor, especie, categoria,
-  combustivel, orgao_autuador, …) + `mock` (usuario_autorizado, scenario_key) +
-  `contract` (views/matviews).
-- **Seeds:** deterministic, BR-valid formats, cross-linked, with documented known
-  fixtures + magic-key sentinels.
+- **Data model** (`docs/framework/arch/data-model.md`): schema `senatran` — entities
+  `veiculo` (owner + indicators denormalized as columns), `condutor` (+ `_ocorrencia`;
+  courses as flat columns), `condutor_imagem`, `condutor_infracao_extrato`, `infracao`
+  (+ `_ocorrencia`, `_pagamento`), `restricao_judicial` (+ `_processo`),
+  `roubo_furto_ocorrencia`, `csv_seguranca`, `comunicacao_venda`, `endereco_possuidor`,
+  `multa_interestadual`, `recall`, `alteracao_permitida` — plus `ref_*` tables (uf,
+  municipio, marca_modelo, cor, especie, tipo_veiculo, carroceria, categoria,
+  combustivel, orgao_autuador, …), `mock` (usuario_autorizado, scenario_key), and
+  `contract` (views/matviews). No separate `proprietario`/`indicador_veiculo` table —
+  both are columns on `veiculo`.
+- **Seeds** (`docs/framework/arch/mock-data.md`): deterministic (seeded PRNG),
+  BR-valid formats with check digits, cross-linked, with documented known fixtures +
+  magic-key sentinels.
+- **Invariants:** 6 reference-signal units in `docs/framework/arch/invariants/`
+  (AUTH, HTTP, API, DATA, SCEN, SEC), traced in `trace.json`.
 
 ## Test pyramid (P5)
 

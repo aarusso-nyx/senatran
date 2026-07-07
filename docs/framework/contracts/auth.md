@@ -14,9 +14,9 @@ offline. See `DESIGN-DECISIONS.md` D-0004.
 
 ## Required on every request
 
-| Header | Required | Rule |
-| --- | --- | --- |
-| `x-cpf-usuario` | always | 11-digit numeric CPF. Missing/malformed → **401**. |
+| Header             | Required                       | Rule                                                                               |
+| ------------------ | ------------------------------ | ---------------------------------------------------------------------------------- |
+| `x-cpf-usuario`    | always                         | 11-digit numeric CPF. Missing/malformed → **401**.                                 |
 | `x-client-cert-cn` | when `AUTH_CERT_SIMULATION=on` | Simulated certificate Common Name; must be allowlisted. Missing/unknown → **401**. |
 
 `x-cpf-usuario` is enforced regardless of any flag — it is part of the contract.
@@ -39,7 +39,10 @@ Controlled by env (`.env`):
 Failures use the standard envelope with `401`:
 
 ```json
-{ "returnCode": 401, "message": "Não autorizado: falha na autenticação do certificado ou do CPF do usuário." }
+{
+  "returnCode": 401,
+  "message": "Não autorizado: falha na autenticação do certificado ou do CPF do usuário."
+}
 ```
 
 The exact `message` text is stable and may be asserted by consumers.

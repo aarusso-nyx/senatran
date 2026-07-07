@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "1.0.0",
+  "version": "1.0.0",
+  "id": "INV-DATA-001",
+  "domain": "DATA",
+  "severity": "gate",
+  "type": "data_contract",
+  "title": "Deterministic, format-valid, coherent mock data",
+  "statement": "Seed data is generated deterministically (seeded PRNG, no Math.random); re-running the generator yields byte-identical SQL. Generated identifiers are format-valid: CPF/CNPJ with valid mod-11 check digits, placas in Mercosul (LLLNLNN) or legacy (LLLNNNN) form, 17-char VIN chassis, 11-digit RENAVAM. Cross-entity references are coherent (infraction → real vehicle/driver; indicator columns agree with child rows; código_* values exist in ref_* tables).",
+  "rationale": "Consumers validate these identifiers with real Brazilian format checks; invalid data would be rejected before reaching business logic. Determinism makes seeds reviewable (committed SQL) and lets CI assert no drift.",
+  "status": "active",
+  "verification": {
+    "required_suites": ["db", "unit"],
+    "oracle": "tests"
+  },
+  "authority": {
+    "docs": [
+      {
+        "doc": "docs/framework/arch/mock-data.md",
+        "anchor": "brazilian-format-rules-valid-verifiable"
+      }
+    ]
+  },
+  "scope": {
+    "components": ["db", "tooling"],
+    "code_areas": ["tools/scripts/**", "database/seed/**"]
+  },
+  "change_policy": {
+    "breaking_change_requires": ["doc_update", "test_update"],
+    "test_weakening_allowed": false,
+    "human_approval_required": false
+  },
+  "tags": ["data", "seeds", "determinism", "br-formats", "D-0006"]
+}

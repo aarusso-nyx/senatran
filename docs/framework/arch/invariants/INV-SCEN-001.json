@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "1.0.0",
+  "version": "1.0.0",
+  "id": "INV-SCEN-001",
+  "domain": "SCEN",
+  "severity": "gate",
+  "type": "api_contract",
+  "title": "Deterministic response scenarios (data-driven + magic keys)",
+  "statement": "Scenario resolution is deterministic and documented. Data-driven: a well-formed identifier present in the database yields 200; absent yields 404; a malformed required param yields 400. Reserved magic keys in mock.scenario_key force 402/500 (and cpf_usuario=00000000000 forces 401). Resolution order is fixed: auth (401) → forced scenario_key → data-driven. The reserved sentinels in scenarios.md are stable and never collide with generated data.",
+  "rationale": "pec/teat rely on being able to trigger each status deterministically in integration tests. The sentinels are part of the contract and must remain stable and collision-free.",
+  "status": "active",
+  "verification": {
+    "required_suites": ["e2e", "int"],
+    "oracle": "tests"
+  },
+  "authority": {
+    "docs": [
+      {
+        "doc": "docs/framework/contracts/scenarios.md",
+        "anchor": "resolution-order-guard-filter-service"
+      }
+    ]
+  },
+  "scope": {
+    "components": ["api", "db"],
+    "code_areas": ["apps/api/src/**", "domain/**/api/src/**", "database/**"]
+  },
+  "change_policy": {
+    "breaking_change_requires": ["doc_update", "test_update", "human_approval"],
+    "test_weakening_allowed": false,
+    "human_approval_required": true
+  },
+  "tags": ["api", "scenarios", "magic-keys", "D-0005"]
+}
