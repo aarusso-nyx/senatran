@@ -8,10 +8,14 @@ import { RouboFurtoController } from '../../domain/roubo-furto/api/src/roubo-fur
 import { ConsultaCsvController } from '../../domain/consulta-csv/api/src/consulta-csv.controller.js';
 import { AutorizacoesController } from '../../domain/autorizacoes/api/src/autorizacoes.controller.js';
 
-/** A recording ReadService that returns the (view, keys) it was called with. */
+/** A recording ReadService that captures both one() and list() calls. */
 function recorder() {
   const calls: { view: string; keys: unknown }[] = [];
   const read = {
+    list: async (table: string, keys?: unknown) => (
+      calls.push({ view: table, keys }),
+      { table, keys }
+    ),
     one: async (view: string, keys?: unknown) => (
       calls.push({ view, keys }),
       { view, keys }

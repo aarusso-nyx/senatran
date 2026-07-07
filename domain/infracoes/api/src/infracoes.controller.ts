@@ -1,9 +1,10 @@
-import { Controller, Get, Inject, Param } from '@nestjs/common';
+import { Controller, Get, Inject, Param, Query } from '@nestjs/common';
 import { ReadService } from '../../../shared/api/src/common/read.service.js';
 
 /**
- * WSDenatran `infracoes` endpoints. Thin: each method maps path params to a
- * prepared contract view via ReadService. No logic here (D-0003).
+ * WSDenatran `infracoes` endpoints. Thin: list endpoints paginate over the base
+ * table via ReadService.list (honoring idUltimoRegistro); ocorrencias/pagamentos
+ * (no cursor in their schema) read a prepared view. No logic here (D-0003).
  */
 @Controller('v1/infracoes')
 export class InfracoesController {
@@ -14,29 +15,42 @@ export class InfracoesController {
     @Param('autoInfracao') autoInfracao: string,
     @Param('orgao') orgao: string,
     @Param('codigoInfracao') codigoInfracao: string,
+    @Query('idUltimoRegistro') cursor?: string,
   ) {
-    return this.read.one('v_infracoes_by_ait', {
-      codigo_orgao_autuador: orgao,
-      auto_infracao: autoInfracao,
-      codigo_infracao: codigoInfracao,
-    });
+    return this.read.list(
+      'infracao',
+      {
+        codigo_orgao_autuador: orgao,
+        auto_infracao: autoInfracao,
+        codigo_infracao: codigoInfracao,
+      },
+      cursor,
+    );
   }
 
   @Get('cnpj/:cnpj')
-  byCnpj(@Param('cnpj') cnpj: string) {
-    return this.read.one('v_infracoes_by_cnpj', { cnpj });
+  byCnpj(
+    @Param('cnpj') cnpj: string,
+    @Query('idUltimoRegistro') cursor?: string,
+  ) {
+    return this.read.list('infracao', { cnpj }, cursor);
   }
 
   @Get('cpf/:cpf')
-  byCpf(@Param('cpf') cpf: string) {
-    return this.read.one('v_infracoes_by_cpf', { cpf });
+  byCpf(@Param('cpf') cpf: string, @Query('idUltimoRegistro') cursor?: string) {
+    return this.read.list('infracao', { cpf }, cursor);
   }
 
   @Get('habilitacaoEstrangeira/:identificacao')
-  byHabilitacaoEstrangeira(@Param('identificacao') identificacao: string) {
-    return this.read.one('v_infracoes_by_habilitacao_estrangeira', {
-      identificacao_hab_estr: identificacao,
-    });
+  byHabilitacaoEstrangeira(
+    @Param('identificacao') identificacao: string,
+    @Query('idUltimoRegistro') cursor?: string,
+  ) {
+    return this.read.list(
+      'infracao',
+      { identificacao_hab_estr: identificacao },
+      cursor,
+    );
   }
 
   @Get(
@@ -70,32 +84,44 @@ export class InfracoesController {
   }
 
   @Get('pgu/:pgu/uf/:uf')
-  byPguUf(@Param('pgu') pgu: string, @Param('uf') uf: string) {
-    return this.read.one('v_infracoes_by_pgu_and_uf', { numero_pgu: pgu, uf });
+  byPguUf(
+    @Param('pgu') pgu: string,
+    @Param('uf') uf: string,
+    @Query('idUltimoRegistro') cursor?: string,
+  ) {
+    return this.read.list('infracao', { numero_pgu: pgu, uf }, cursor);
   }
 
   @Get('placa/:placa/exigibilidade/:situacaoExigibilidade')
   byPlacaExigibilidade(
     @Param('placa') placa: string,
     @Param('situacaoExigibilidade') situacaoExigibilidade: string,
+    @Query('idUltimoRegistro') cursor?: string,
   ) {
-    return this.read.one('v_infracoes_by_placa_and_exigibilidade', {
-      placa,
-      situacao_exigibilidade: situacaoExigibilidade,
-    });
+    return this.read.list(
+      'infracao',
+      { placa, situacao_exigibilidade: situacaoExigibilidade },
+      cursor,
+    );
   }
 
   @Get('registroCnh/:cnh')
-  byRegistroCnh(@Param('cnh') cnh: string) {
-    return this.read.one('v_infracoes_by_registro_cnh', {
-      numero_registro_cnh: cnh,
-    });
+  byRegistroCnh(
+    @Param('cnh') cnh: string,
+    @Query('idUltimoRegistro') cursor?: string,
+  ) {
+    return this.read.list('infracao', { numero_registro_cnh: cnh }, cursor);
   }
 
   @Get('renainf/:numeroRenainf')
-  byRenainf(@Param('numeroRenainf') numeroRenainf: string) {
-    return this.read.one('v_infracoes_by_renainf', {
-      codigo_renainf: numeroRenainf,
-    });
+  byRenainf(
+    @Param('numeroRenainf') numeroRenainf: string,
+    @Query('idUltimoRegistro') cursor?: string,
+  ) {
+    return this.read.list(
+      'infracao',
+      { codigo_renainf: numeroRenainf },
+      cursor,
+    );
   }
 }

@@ -2,52 +2,67 @@ import { describe, expect, it, beforeEach } from 'vitest';
 import { VeiculosController } from './veiculos.controller.js';
 import type { ReadService } from '../../../shared/api/src/common/read.service.js';
 
-let last: { view: string; keys: unknown };
+let last: {
+  fn: 'one' | 'list';
+  target: string;
+  keys: unknown;
+  cursor?: string;
+};
 const read = {
   one: async (view: string, keys?: unknown) => (
-    (last = { view, keys }),
+    (last = { fn: 'one', target: view, keys }),
     { view, keys }
+  ),
+  list: async (table: string, keys: unknown, cursor?: string) => (
+    (last = { fn: 'list', target: table, keys, cursor }),
+    { table, keys }
   ),
 } as unknown as ReadService;
 const c = new VeiculosController(read);
 
 beforeEach(() => {
-  last = { view: '', keys: undefined };
+  last = { fn: 'one', target: '', keys: undefined };
 });
 
-describe('VeiculosController delegates to the right view + keys', () => {
-  it('byPlaca', async () => {
-    await c.byPlaca('ABC1D23');
+describe('VeiculosController delegates to the right seam + keys', () => {
+  it('byPlaca → list over the veiculo base table', async () => {
+    await c.byPlaca('ABC1D23', '10');
     expect(last).toEqual({
-      view: 'v_veiculo_by_placa',
+      fn: 'list',
+      target: 'veiculo',
       keys: { placa: 'ABC1D23' },
+      cursor: '10',
     });
   });
-  it('byRenavam maps to codigo_renavam', async () => {
+  it('byRenavam maps to codigo_renavam (list)', async () => {
     await c.byRenavam('123');
-    expect(last).toEqual({
-      view: 'v_veiculo_by_renavam',
+    expect(last).toMatchObject({
+      fn: 'list',
+      target: 'veiculo',
       keys: { codigo_renavam: '123' },
     });
   });
-  it('proprietario cnpj+chassi+renavam maps cnpj→id_proprietario', async () => {
+  it('proprietario cnpj+chassi+renavam → single object view', async () => {
     await c.byProprietarioCnpjChassiRenavam('CNPJ', 'CH', 'RN');
     expect(last).toEqual({
-      view: 'v_veiculo_by_proprietario_cnpj_chassi_renavam',
+      fn: 'one',
+      target: 'v_veiculo_by_proprietario_cnpj_chassi_renavam',
       keys: { id_proprietario: 'CNPJ', chassi: 'CH', codigo_renavam: 'RN' },
     });
   });
-  it('comunicacaoVenda cpf', async () => {
+  it('comunicacaoVenda cpf → object view', async () => {
     await c.comunicacaoVendaCpf('C', 'R', 'P');
     expect(last).toEqual({
-      view: 'v_comunicacao_venda_by_cpf',
+      fn: 'one',
+      target: 'v_comunicacao_venda_by_cpf',
       keys: { cpf: 'C', renavam: 'R', placa: 'P' },
     });
   });
-  it('recall by chassi', async () => {
+  it('recall by chassi → object view', async () => {
     await c.recall('CH');
     expect(last).toEqual({
-      view: 'v_veiculo_recall_by_chassi',
+      fn: 'one',
+      target: 'v_veiculo_recall_by_chassi',
       keys: { chassi: 'CH' },
     });
   });

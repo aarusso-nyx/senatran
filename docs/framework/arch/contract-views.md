@@ -67,12 +67,19 @@ const { rows } = await db.query(
 No shaping, aggregation, or COALESCE lives in TypeScript — only the WHERE values
 and the 404/empty decision.
 
-## Pagination
+## Pagination (implemented)
 
-Endpoints marked `⟳` accept `idUltimoRegistro` (query, int64). The per-endpoint
-view exposes the base `id`; the service adds `and id > $2 order by id limit N` and
-sets the envelope's `idUltimoRegistro` to the last returned id. Non-paginated
-endpoints ignore it.
+Endpoints marked `⟳` accept `idUltimoRegistro` (query, int64) and are served by
+`ReadService.list(baseTable, keys, cursor)`, which queries the **base table**
+(`senatran.veiculo` / `infracao` / `restricao_judicial_processo` /
+`roubo_furto_ocorrencia`) directly: `where <keys> and id > $cursor order by id
+limit 100`, plus a `count(*)` for the real total. It then builds the entity's
+envelope (`quantidade*` = returned, `quantidade*Real` = total, `idUltimoRegistro`
+= last id in the page). An empty result set is a 404; paging past the end returns
+an empty page with the real total preserved. The aggregated per-endpoint views
+remain for the integration tests and as the canonical shape reference; single-
+object / boolean / indicator / static-list endpoints still use `ReadService.one`
+over those views.
 
 ## Scenario resolution vs. views
 

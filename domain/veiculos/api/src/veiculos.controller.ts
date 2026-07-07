@@ -1,51 +1,77 @@
-import { Controller, Get, Inject, Param } from '@nestjs/common';
+import { Controller, Get, Inject, Param, Query } from '@nestjs/common';
 import { ReadService } from '../../../shared/api/src/common/read.service.js';
 
 /**
- * WSDenatran `veiculos` endpoints (20). Thin: each method maps path params to a
- * prepared contract view via ReadService. No logic here (D-0003).
+ * WSDenatran `veiculos` endpoints (20). Thin: list endpoints paginate over the
+ * base table via ReadService.list (honoring idUltimoRegistro); single-object
+ * endpoints read a prepared contract view. No logic here (D-0003).
  */
 @Controller('v1/veiculos')
 export class VeiculosController {
   constructor(@Inject(ReadService) private readonly read: ReadService) {}
 
   @Get('placa/:placa')
-  byPlaca(@Param('placa') placa: string) {
-    return this.read.one('v_veiculo_by_placa', { placa });
+  byPlaca(
+    @Param('placa') placa: string,
+    @Query('idUltimoRegistro') cursor?: string,
+  ) {
+    return this.read.list('veiculo', { placa }, cursor);
   }
 
   @Get('chassi/:chassi')
-  byChassi(@Param('chassi') chassi: string) {
-    return this.read.one('v_veiculo_by_chassi', { chassi });
+  byChassi(
+    @Param('chassi') chassi: string,
+    @Query('idUltimoRegistro') cursor?: string,
+  ) {
+    return this.read.list('veiculo', { chassi }, cursor);
   }
 
   @Get('renavam/:renavam')
-  byRenavam(@Param('renavam') renavam: string) {
-    return this.read.one('v_veiculo_by_renavam', { codigo_renavam: renavam });
+  byRenavam(
+    @Param('renavam') renavam: string,
+    @Query('idUltimoRegistro') cursor?: string,
+  ) {
+    return this.read.list('veiculo', { codigo_renavam: renavam }, cursor);
   }
 
   @Get('motor/:motor')
-  byMotor(@Param('motor') motor: string) {
-    return this.read.one('v_veiculo_by_motor', { numero_motor: motor });
+  byMotor(
+    @Param('motor') motor: string,
+    @Query('idUltimoRegistro') cursor?: string,
+  ) {
+    return this.read.list('veiculo', { numero_motor: motor }, cursor);
   }
 
   @Get('cambio/:cambio')
-  byCambio(@Param('cambio') cambio: string) {
-    return this.read.one('v_veiculo_by_cambio', { numero_cambio: cambio });
+  byCambio(
+    @Param('cambio') cambio: string,
+    @Query('idUltimoRegistro') cursor?: string,
+  ) {
+    return this.read.list('veiculo', { numero_cambio: cambio }, cursor);
   }
 
   @Get('proprietario/cpf/:identificacao')
-  byProprietarioCpf(@Param('identificacao') identificacao: string) {
-    return this.read.one('v_veiculos_by_proprietario_cpf', {
-      id_proprietario: identificacao,
-    });
+  byProprietarioCpf(
+    @Param('identificacao') identificacao: string,
+    @Query('idUltimoRegistro') cursor?: string,
+  ) {
+    return this.read.list(
+      'veiculo',
+      { id_proprietario: identificacao },
+      cursor,
+    );
   }
 
   @Get('proprietario/cnpj/:identificacao')
-  byProprietarioCnpj(@Param('identificacao') identificacao: string) {
-    return this.read.one('v_veiculos_by_proprietario_cnpj', {
-      id_proprietario: identificacao,
-    });
+  byProprietarioCnpj(
+    @Param('identificacao') identificacao: string,
+    @Query('idUltimoRegistro') cursor?: string,
+  ) {
+    return this.read.list(
+      'veiculo',
+      { id_proprietario: identificacao },
+      cursor,
+    );
   }
 
   @Get('proprietario/cpf/:cpf/chassi/:chassi/renavam/:renavam')

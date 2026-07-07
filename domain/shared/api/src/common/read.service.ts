@@ -13,11 +13,45 @@ const COL_KIND: Record<string, string> = {
   codigo_renavam: 'renavam',
 };
 
+/** Default page size for cursor pagination. */
+const PAGE_SIZE = 100;
+
 /**
- * The single seam every read (WSDenatran) service uses. Runs one parameterized
- * query against a prepared `contract.*` view and returns its `payload`. Applies
- * forced scenario keys before the query (scenarios.md); an empty result is a 404.
- * Controllers/services contain no other logic (D-0003).
+ * Per-base-table envelope for paginated list endpoints: the returned-count field,
+ * the total-count field, and the array key — matching each response schema.
+ */
+const ENVELOPES: Record<
+  string,
+  { returned: string; real: string; arrayKey: string }
+> = {
+  veiculo: {
+    returned: 'quantidadeVeiculo',
+    real: 'quantidadeVeiculoReal',
+    arrayKey: 'veiculo',
+  },
+  infracao: {
+    returned: 'quantidadeInfracoes',
+    real: 'quantidadeInfracoesReal',
+    arrayKey: 'infracoes',
+  },
+  restricao_judicial_processo: {
+    returned: 'quantidadeRetornada',
+    real: 'quantidadeReal',
+    arrayKey: 'processos',
+  },
+  roubo_furto_ocorrencia: {
+    returned: 'quantidadeRetornada',
+    real: 'quantidadeReal',
+    arrayKey: 'ocorrenciasRouboFurto',
+  },
+};
+
+/**
+ * The read seam for WSDenatran endpoints. `one()` returns a prepared
+ * `contract.*` view's payload (single object / boolean / static list). `list()`
+ * serves cursor-paginated collections directly from the base table, honoring the
+ * `idUltimoRegistro` cursor and building the correct envelope. Both apply forced
+ * scenario keys first (scenarios.md); an empty result is a 404.
  */
 @Injectable()
 export class ReadService {
@@ -26,11 +60,7 @@ export class ReadService {
     @Inject(ScenarioService) private readonly scenario: ScenarioService,
   ) {}
 
-  /**
-   * @param view  contract view name, e.g. 'v_veiculo_by_placa'
-   * @param keys  ordered map of key column → value (WHERE `col = $n`)
-   */
-  async one(view: string, keys: Record<string, string> = {}): Promise<unknown> {
+  private async scenarioCheck(keys: Record<string, string>): Promise<void> {
     for (const [col, val] of Object.entries(keys)) {
       const kind = COL_KIND[col];
       if (kind) {
@@ -38,16 +68,72 @@ export class ReadService {
         if (forced) throw new WsdenatranError(forced.status, forced.message);
       }
     }
+  }
+
+  /** Single-object / boolean / static-list endpoints via a prepared view. */
+  async one(view: string, keys: Record<string, string> = {}): Promise<unknown> {
+    await this.scenarioCheck(keys);
     const cols = Object.keys(keys);
     const where = cols.length
       ? ' where ' + cols.map((c, i) => `${c} = $${i + 1}`).join(' and ')
       : '';
-    const sql = `select payload from contract.${view}${where}`;
     const result = await this.db.query<{ payload: unknown }>(
-      sql,
+      `select payload from contract.${view}${where}`,
       Object.values(keys),
     );
     if (result.rows.length === 0) throw notFound();
     return result.rows[0].payload;
+  }
+
+  /**
+   * Cursor-paginated list from a base table. Returns the envelope with the page
+   * of items (id > cursor, ordered by id, limited to PAGE_SIZE), total real
+   * count, and idUltimoRegistro (the last id in the page).
+   */
+  async list(
+    table: string,
+    keys: Record<string, string>,
+    cursor?: string,
+  ): Promise<unknown> {
+    const env = ENVELOPES[table];
+    if (!env) throw new WsdenatranError(500, `unknown list table ${table}`);
+    await this.scenarioCheck(keys);
+
+    const cols = Object.keys(keys);
+    const where = cols.map((c, i) => `${c} = $${i + 1}`).join(' and ');
+    const params = Object.values(keys);
+
+    const totalR = await this.db.query<{ n: number }>(
+      `select count(*)::int as n from senatran.${table} where ${where}`,
+      params,
+    );
+    const total = totalR.rows[0]?.n ?? 0;
+    if (total === 0) throw notFound();
+
+    const pageParams: unknown[] = [...params];
+    let cursorClause = '';
+    if (
+      cursor !== undefined &&
+      cursor !== '' &&
+      Number.isFinite(Number(cursor))
+    ) {
+      pageParams.push(Number(cursor));
+      cursorClause = ` and id > $${pageParams.length}`;
+    }
+    const pageR = await this.db.query<{ id: number; payload: unknown }>(
+      `select id, payload from senatran.${table} where ${where}${cursorClause} order by id limit ${PAGE_SIZE}`,
+      pageParams,
+    );
+    const items = pageR.rows.map((r) => r.payload);
+    const lastId = pageR.rows.length
+      ? pageR.rows[pageR.rows.length - 1].id
+      : Number(cursor ?? 0);
+
+    return {
+      [env.returned]: items.length,
+      [env.real]: total,
+      idUltimoRegistro: lastId,
+      [env.arrayKey]: items,
+    };
   }
 }

@@ -59,4 +59,54 @@ describe('ReadService', () => {
     expect(out).toEqual([1, 2, 3]);
     expect(db.calls[0].sql).not.toContain('where');
   });
+
+  describe('list() pagination', () => {
+    it('builds the veiculo envelope with returned/real counts + cursor', async () => {
+      const { service, db } = make();
+      db.handler = (sql) =>
+        sql.includes('count(*)')
+          ? { rows: [{ n: 3 }] }
+          : {
+              rows: [
+                { id: 5, payload: { a: 1 } },
+                { id: 9, payload: { a: 2 } },
+              ],
+            };
+      const out = await service.list('veiculo', { placa: 'ABC1D23' });
+      expect(out).toEqual({
+        quantidadeVeiculo: 2,
+        quantidadeVeiculoReal: 3,
+        idUltimoRegistro: 9,
+        veiculo: [{ a: 1 }, { a: 2 }],
+      });
+    });
+
+    it('404s when the total count is zero', async () => {
+      const { service, db } = make();
+      db.handler = () => ({ rows: [{ n: 0 }] });
+      await expect(
+        service.list('veiculo', { placa: 'X' }),
+      ).rejects.toMatchObject({ returnCode: 404 });
+    });
+
+    it('adds an id > cursor clause when a cursor is given', async () => {
+      const { service, db } = make();
+      db.handler = (sql) =>
+        sql.includes('count(*)')
+          ? { rows: [{ n: 1 }] }
+          : { rows: [{ id: 12, payload: {} }] };
+      await service.list('infracao', { cpf: '1' }, '7');
+      const page = db.find('order by id');
+      expect(page?.sql).toContain('id > $2');
+      expect(page?.params).toEqual(['1', 7]);
+    });
+
+    it('applies forced scenario keys before querying', async () => {
+      const { service, db } = make({ status: 402, message: 'X' });
+      await expect(
+        service.list('veiculo', { placa: 'ERR2A02' }),
+      ).rejects.toMatchObject({ returnCode: 402 });
+      expect(db.calls).toHaveLength(0);
+    });
+  });
 });
