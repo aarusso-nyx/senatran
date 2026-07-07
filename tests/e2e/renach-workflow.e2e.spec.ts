@@ -16,8 +16,6 @@ afterAll(async () => {
 });
 
 const PROC = 'RS123456789';
-// A seeded, credentialed CRM professional (medical exam requires conselho CRM).
-const EXAMINADOR_CPF = '36316618603';
 
 describe('renach workflow (INV-RENACH-001)', () => {
   it('GET processo → 200 with string situacao', async () => {
@@ -44,23 +42,42 @@ describe('renach workflow (INV-RENACH-001)', () => {
     expect(Array.isArray(res.body)).toBe(true);
   });
 
-  const validExame = () => ({
-    idAgendamento: 'appt-e2e-1',
-    clinica: { codigoClinica: 'RS-CLINIC-0001', cnpj: '11444777000161' },
-    examinador: {
-      cpf: EXAMINADOR_CPF,
-      conselho: 'CRM',
-      numeroConselho: '12345',
-      uf: 'RS',
-    },
-    condutor: {
-      cpf: '52998224725',
-      nome: 'Fulano',
-      dataNascimento: '1985-03-14',
-    },
-    processo: { numeroRenach: PROC, tipoProcesso: 'RENOVACAO' },
-    exame: { dataRealizacao: '2026-07-10T09:30:00Z', resultado: 'APTO' },
-  });
+  // Derive a valid examiner + clinic from the live read endpoints so the body
+  // stays correct regardless of which credentialed rows the seed produced.
+  const validExame = async () => {
+    const clinicas = (
+      await request(ctx.server).get('/v1/renach/clinicasCredenciadas').set(AUTH)
+    ).body as Array<{ codigoClinica: string; cnpj: string }>;
+    const profs = (
+      await request(ctx.server)
+        .get('/v1/renach/profissionaisCredenciados')
+        .set(AUTH)
+    ).body as Array<{ cpf: string; conselho: string; uf: string }>;
+    const clinica = clinicas[0];
+    const examinador = profs.find((p) => p.conselho === 'CRM');
+    expect(clinica, 'seed must have a credentialed clinic').toBeTruthy();
+    expect(
+      examinador,
+      'seed must have a credentialed CRM examiner',
+    ).toBeTruthy();
+    return {
+      idAgendamento: 'appt-e2e-1',
+      clinica: { codigoClinica: clinica.codigoClinica, cnpj: clinica.cnpj },
+      examinador: {
+        cpf: examinador!.cpf,
+        conselho: 'CRM',
+        numeroConselho: '12345',
+        uf: examinador!.uf,
+      },
+      condutor: {
+        cpf: '52998224725',
+        nome: 'Fulano',
+        dataNascimento: '1985-03-14',
+      },
+      processo: { numeroRenach: PROC, tipoProcesso: 'RENOVACAO' },
+      exame: { dataRealizacao: '2026-07-10T09:30:00Z', resultado: 'APTO' },
+    };
+  };
 
   it('POST examesMedicos with an incomplete body → 400', async () => {
     const res = await request(ctx.server)
@@ -74,7 +91,7 @@ describe('renach workflow (INV-RENACH-001)', () => {
 
   it('POST examesMedicos is idempotent for the same Idempotency-Key', async () => {
     const key = `e2e-exame-${Date.now()}`;
-    const body = validExame();
+    const body = await validExame();
     const first = await request(ctx.server)
       .post(`/v1/renach/processos/${PROC}/examesMedicos`)
       .set(AUTH)

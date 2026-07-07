@@ -164,3 +164,115 @@ export const CODE_GROUPS: Record<string, readonly Code[]> = {
   MarcaModelo: MARCAS_MODELOS,
   TipoProprietario: TIPOS_PROPRIETARIO,
 };
+
+// ---- realism pools (names, addresses, coded domains) ----------------------
+export const PRIMEIROS_NOMES: readonly string[] = [
+  'MARIA',
+  'JOSE',
+  'ANA',
+  'JOAO',
+  'ANTONIO',
+  'FRANCISCO',
+  'CARLOS',
+  'PAULO',
+  'PEDRO',
+  'LUCAS',
+  'LUIZ',
+  'MARCOS',
+  'GABRIEL',
+  'RAFAEL',
+  'FERNANDA',
+  'JULIANA',
+  'PATRICIA',
+  'ALINE',
+  'BEATRIZ',
+  'CAMILA',
+  'LARISSA',
+  'BRUNA',
+  'AMANDA',
+  'RENATA',
+];
+export const SOBRENOMES: readonly string[] = [
+  'SILVA',
+  'SANTOS',
+  'OLIVEIRA',
+  'SOUZA',
+  'RODRIGUES',
+  'FERREIRA',
+  'ALVES',
+  'PEREIRA',
+  'LIMA',
+  'GOMES',
+  'COSTA',
+  'RIBEIRO',
+  'MARTINS',
+  'CARVALHO',
+  'ALMEIDA',
+  'LOPES',
+  'SOARES',
+  'FERNANDES',
+  'VIEIRA',
+  'BARBOSA',
+  'ROCHA',
+  'DIAS',
+];
+export const TIPOS_LOGRADOURO: readonly string[] = [
+  'RUA',
+  'AVENIDA',
+  'TRAVESSA',
+  'ALAMEDA',
+  'RODOVIA',
+  'PRACA',
+];
+export const NOMES_LOGRADOURO: readonly string[] = [
+  'DAS FLORES',
+  'BRASIL',
+  'SAO JOAO',
+  'SETE DE SETEMBRO',
+  'QUINZE DE NOVEMBRO',
+  'GETULIO VARGAS',
+  'DOM PEDRO II',
+  'TIRADENTES',
+  'DAS PALMEIRAS',
+  'CENTRAL',
+  'SANTOS DUMONT',
+  'JUSCELINO KUBITSCHEK',
+];
+export const BAIRROS: readonly string[] = [
+  'CENTRO',
+  'JARDIM AMERICA',
+  'VILA NOVA',
+  'BOA VISTA',
+  'SANTA CRUZ',
+  'SAO JORGE',
+  'INDUSTRIAL',
+  'PARQUE DAS ARVORES',
+  'ALTO DA COLINA',
+  'JARDIM PRIMAVERA',
+];
+export const CATEGORIAS_CNH: readonly string[] = [
+  'A',
+  'B',
+  'AB',
+  'C',
+  'D',
+  'E',
+  'AC',
+  'AD',
+  'AE',
+];
+export const SEXOS: readonly Code[] = [
+  { codigo: '1', descricao: 'MASCULINO' },
+  { codigo: '2', descricao: 'FEMININO' },
+];
+export const NACIONALIDADES: readonly Code[] = [
+  { codigo: '1', descricao: 'BRASILEIRA' },
+  { codigo: '2', descricao: 'NATURALIZADO BRASILEIRO' },
+  { codigo: '3', descricao: 'ESTRANGEIRO' },
+];
+export const TIPOS_DOCUMENTO: readonly Code[] = [
+  { codigo: '1', descricao: 'CARTEIRA DE IDENTIDADE' },
+  { codigo: '2', descricao: 'CARTEIRA DE TRABALHO' },
+  { codigo: '3', descricao: 'PASSAPORTE' },
+];
+export const PROCEDENCIAS: readonly string[] = ['NACIONAL', 'IMPORTADA'];

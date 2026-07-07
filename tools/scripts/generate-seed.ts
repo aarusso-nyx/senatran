@@ -38,6 +38,16 @@ import {
   SITUACOES_CNH,
   TIPOS_ALTERACAO,
   CODE_GROUPS,
+  PRIMEIROS_NOMES,
+  SOBRENOMES,
+  TIPOS_LOGRADOURO,
+  NOMES_LOGRADOURO,
+  BAIRROS,
+  CATEGORIAS_CNH,
+  SEXOS,
+  NACIONALIDADES,
+  TIPOS_DOCUMENTO,
+  PROCEDENCIAS,
   type Code,
 } from './lib/refdata.js';
 
@@ -85,11 +95,35 @@ const groupOf = (field: string): string | undefined => {
   return m[1] in CODE_GROUPS ? m[1] : undefined;
 };
 
+const fullName = (rng: Rng): string =>
+  `${rng.pick(PRIMEIROS_NOMES)} ${rng.pick(SOBRENOMES)} ${rng.pick(SOBRENOMES)}`;
+
+/** A readable UPPERCASE phrase from a field name (fallback for free-text). */
+const humanize = (field: string): string =>
+  field
+    .replace(/^(codigo|descricao|numero|data|indicador|tipo)/, '')
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/\d+$/, '')
+    .trim()
+    .toUpperCase() || 'REGULAR';
+
+/** Plausible numeric range inferred from the field name. */
+const numericFor = (field: string, rng: Rng): number => {
+  if (/^ano/i.test(field)) return rng.int(2000, 2025);
+  if (/potencia/i.test(field)) return rng.int(60, 400);
+  if (/cilindrada/i.test(field)) return rng.int(1000, 4000);
+  if (/^(cmt|pbt|cmc)/i.test(field)) return rng.int(800, 45000);
+  if (/lotacao/i.test(field)) return rng.int(2, 46);
+  if (/eixo/i.test(field)) return rng.int(2, 6);
+  if (/(valor|limite|medicao)/i.test(field)) return rng.int(40, 2000);
+  return rng.int(0, 999);
+};
+
 function buildField(
   field: string,
   schemaIn: JsonSchema,
   rng: Rng,
-  ctx: Record<string, string>,
+  ctx: Record<string, unknown>,
   cache: Record<string, Code>,
 ): unknown {
   const s = deref(schemaIn);
@@ -109,30 +143,32 @@ function buildField(
       const c = cache[g] ?? (cache[g] = rng.pick(CODE_GROUPS[g]));
       return Number(c.codigo) || rng.int(1, 99);
     }
-    return rng.int(0, 999);
+    return numericFor(field, rng);
   }
   // string
-  if (s.format === 'date-time') return dateTime(rng, 2015, 2024);
-  if (s.format === 'date') return dateOnly(rng, 2015, 2024);
+  if (s.format === 'date-time') return dateTime(rng, 2008, 2024);
+  if (s.format === 'date') return dateOnly(rng, 2008, 2024);
   const g = groupOf(field);
   if (g) {
     const c = cache[g] ?? (cache[g] = rng.pick(CODE_GROUPS[g]));
     return field.startsWith('codigo') ? c.codigo : c.descricao;
   }
+  if (/cep/i.test(field)) return rng.digits(8);
   if (/uf/i.test(field)) return uf(rng);
+  if (/procedencia/i.test(field)) return rng.pick(PROCEDENCIAS);
+  if (/nome/i.test(field) && !/(numero|formulario|codigo)/i.test(field))
+    return fullName(rng);
   if (field.startsWith('descricao'))
-    return rng.bool(0.85)
-      ? `DESCRICAO ${field.slice(9).toUpperCase()}`
-      : 'INDISPONÍVEL';
+    return rng.bool(0.85) ? humanize(field) : 'INDISPONÍVEL';
   if (field.startsWith('codigo') || field.startsWith('numero'))
     return rng.digits(rng.int(4, 8));
-  return rng.bool(0.7) ? `${field}-${rng.digits(4)}` : '';
+  return rng.bool(0.6) ? humanize(field) : '';
 }
 
 function buildValue(
   schemaIn: JsonSchema,
   rng: Rng,
-  ctx: Record<string, string>,
+  ctx: Record<string, unknown>,
 ): unknown {
   const s = deref(schemaIn);
   if (s.type === 'array') {
@@ -158,23 +194,12 @@ function buildValue(
 const payloadOf = (
   schemaName: string,
   rng: Rng,
-  ctx: Record<string, string>,
+  ctx: Record<string, unknown>,
 ): unknown =>
   buildValue({ $ref: `#/components/schemas/${schemaName}` }, rng, ctx);
 
 // ---- pools -----------------------------------------------------------------
 const rng = new Rng(MASTER_SEED);
-const NAMES = [
-  'MARIA SILVA',
-  'JOSE SANTOS',
-  'ANA OLIVEIRA',
-  'JOAO SOUZA',
-  'PAULO LIMA',
-  'CARLA ROCHA',
-  'PEDRO ALVES',
-  'LUCIA GOMES',
-];
-const name = (): string => `${rng.pick(NAMES)} ${rng.digits(2)}`;
 
 interface Vehicle {
   placa: string;
@@ -196,6 +221,166 @@ interface Driver {
   nome: string;
   dataNascimento: string;
   nomeMae: string;
+}
+type Muni = { codigo: string; uf: string; descricao: string };
+type Org = { codigo: string; uf: string; descricao: string };
+
+const endereco = (rng: Rng, m: Muni): Record<string, unknown> => ({
+  enderecoLogradouro: `${rng.pick(TIPOS_LOGRADOURO)} ${rng.pick(NOMES_LOGRADOURO)}`,
+  enderecoNumero: String(rng.int(1, 3000)),
+  enderecoComplemento: rng.bool(0.4) ? `APTO ${rng.int(1, 300)}` : '',
+  enderecoBairro: rng.pick(BAIRROS),
+  enderecoCep: rng.digits(8),
+  enderecoMunicipio: m.codigo,
+  descricaoEnderecoMunicipio: m.descricao,
+  enderecoUf: m.uf,
+});
+
+/** Coherent Condutor anchors: dates derived from birth, one municipio throughout. */
+function condutorCtx(rng: Rng, d: Driver): Record<string, unknown> {
+  const birthY = Number(d.dataNascimento.slice(0, 4));
+  const habY = Math.min(2024, birthY + rng.int(18, 45));
+  const muni = rng.pick(MUNICIPIOS);
+  const sexo = rng.pick(SEXOS);
+  const nac = NACIONALIDADES[rng.bool(0.9) ? 0 : rng.int(1, 2)];
+  const doc = rng.pick(TIPOS_DOCUMENTO);
+  const sit = rng.bool(0.85) ? SITUACOES_CNH[0] : rng.pick(SITUACOES_CNH);
+  const cat = rng.pick(CATEGORIAS_CNH);
+  const course = (): string => dateTime(rng, habY, 2024);
+  return {
+    cpf: d.cpf,
+    numeroRegistro: d.registro,
+    numeroFormularioRenach: d.renach,
+    numeroListaImpedimento: d.impedimento,
+    numeroPgu: d.pgu,
+    numeroFormularioPid: d.pid,
+    nome: d.nome,
+    nomeMae: d.nomeMae,
+    nomePai: fullName(rng),
+    dataNascimento: `${d.dataNascimento}T00:00:00.000Z`,
+    sexo: Number(sexo.codigo),
+    descricaoSexo: sexo.descricao,
+    nacionalidade: Number(nac.codigo),
+    descricaoNacionalidade: nac.descricao,
+    tipoDocumento: Number(doc.codigo),
+    descricaoDocumento: doc.descricao,
+    numeroDocumento: rng.digits(9),
+    orgaoExpedidorDocumento: 'SSP',
+    situacaoCnh: sit.codigo,
+    descricaoSituacaoCnh: sit.descricao,
+    situacaoCnhAnterior: sit.codigo,
+    descricaoSituacaoCnhAnterior: sit.descricao,
+    categoriaAtual: cat,
+    categoriaAutorizada: cat,
+    categoriaRebaixada: '',
+    dataPrimeiraHabilitacao: dateTime(rng, habY, habY),
+    dataValidadeCnh: dateTime(rng, 2024, 2029),
+    dataCadastramento: dateTime(rng, habY, habY),
+    dataUltimaEmissaoHistorico: dateTime(rng, 2018, 2024),
+    dataTransacaoUltimaAtualizacao: dateTime(rng, 2018, 2024),
+    dataValidadePid: dateTime(rng, 2024, 2028),
+    ufDominio: muni.uf,
+    ufPrimeiraHabilitacao: muni.uf,
+    ufHabilitacaoAtual: muni.uf,
+    ufExpedidorDocumento: muni.uf,
+    ufSolicitanteTransferencia: muni.uf,
+    ufExpedicaoPid: muni.uf,
+    localidadeNascimento: muni.codigo,
+    descricaoLocalidadeNascimento: muni.descricao,
+    restricoesMedicas: rng.bool(0.3) ? 'USO DE LENTES CORRETIVAS' : '',
+    dataCursoTpp: course(),
+    dataCursoTe: course(),
+    dataCursoTcp: course(),
+    dataCursoTve: course(),
+    dataCursoTci: course(),
+    dataCursoTmt: course(),
+    dataCursoTmf: course(),
+    dataCursoReciclagemInfrator: course(),
+    dataCursoAtualizacaoRenovacaoCnh: course(),
+    ...endereco(rng, muni),
+  };
+}
+
+/** Coherent Veiculo anchors: anoFabricacao<=anoModelo, one municipio, plausible specs. */
+function veiculoCtx(rng: Rng, v: Vehicle): Record<string, unknown> {
+  const anoFab = rng.int(2000, 2024);
+  const anoModelo = Math.min(2025, anoFab + rng.int(0, 1));
+  const muni = rng.pick(MUNICIPIOS);
+  const tipoV = rng.pick(TIPOS_VEICULO);
+  const lot =
+    tipoV.descricao === 'ONIBUS'
+      ? rng.int(20, 45)
+      : tipoV.descricao === 'CAMINHAO'
+        ? rng.int(2, 3)
+        : rng.int(2, 7);
+  return {
+    chassi: v.chassi,
+    placa: v.placa,
+    codigoRenavam: v.renavam,
+    numeroMotor: v.motor,
+    numeroCambio: v.cambio,
+    numeroIdentificacaoProprietario: v.ownerId,
+    codigoTipoProprietario: v.ownerTipo,
+    descricaoTipoProprietario:
+      v.ownerTipo === '2' ? 'PESSOA JURIDICA' : 'PESSOA FISICA',
+    nomeProprietario: fullName(rng),
+    indicadorAlarme: v.ind.ind_alarme,
+    indicadorRouboFurto: v.ind.ind_roubo_furto,
+    codigoTipoVeiculo: tipoV.codigo,
+    descricaoTipoVeiculo: tipoV.descricao,
+    anoFabricacao: anoFab,
+    anoModelo,
+    potencia: rng.int(60, 400),
+    cilindradas: rng.int(1000, 4000),
+    cmt: rng.int(1000, 6000),
+    pbt: rng.int(1000, 6000),
+    cmc: rng.int(0, 3000),
+    qtdEixos: 2,
+    lotacao: lot,
+    codigoMunicipioEmplacamento: muni.codigo,
+    descricaoMunicipioEmplacamento: muni.descricao,
+    ufJurisdicao: muni.uf,
+    dataEmissaoCrv: dateTime(rng, anoFab, 2025),
+    situacao: rng.bool(0.9) ? 'CIRCULACAO' : 'BAIXADO',
+    procedencia: rng.pick(PROCEDENCIAS),
+  };
+}
+
+/** Coherent Infracao anchors: real órgão, one municipio, plausible fine + speed. */
+function infracaoCtx(
+  rng: Rng,
+  v: Vehicle,
+  org: Org,
+  ait: string,
+  codInf: string,
+  renainf: string,
+  d: Driver | undefined,
+): Record<string, unknown> {
+  const muni = rng.pick(MUNICIPIOS);
+  const dataInf = dateTime(rng, 2022, 2025);
+  return {
+    placa: v.placa,
+    codigoRenavam: v.renavam,
+    autoInfracao: ait,
+    numeroAutoInfracao: ait,
+    codigoInfracao: codInf,
+    codigoRenainf: renainf,
+    codigoOrgaoAutuador: org.codigo,
+    descricaoOrgaoAutuador: org.descricao,
+    ufOrgaoAutuador: org.uf,
+    dataCadastroInfracao: dataInf,
+    dataInfracao: dataInf,
+    codigoMunicipioInfracao: muni.codigo,
+    descricaoMunicipioInfracao: muni.descricao,
+    codigoMunicipioEmplacamento: muni.codigo,
+    descricaoMunicipioEmplacamento: muni.descricao,
+    valorIntegralInfracao: rng.pick([88.38, 130.16, 195.23, 293.47]),
+    medicaoReal: rng.int(60, 140),
+    limitePermitido: 60,
+    medicaoConsiderada: rng.int(55, 135),
+    nomePossuidor: fullName(rng),
+    numeroRegistroCnhCondutor: d?.registro ?? '',
+  };
 }
 
 const VEH = 120,
@@ -297,9 +482,9 @@ for (let i = drivers.length; i < DRV; i++) {
     pgu: 'PGU' + rng.digits(7),
     pid: 'PID' + rng.digits(7),
     impedimento: 'IMP' + rng.digits(7),
-    nome: name(),
+    nome: fullName(rng),
     dataNascimento: dateOnly(rng, 1955, 2004),
-    nomeMae: rng.pick(NAMES),
+    nomeMae: fullName(rng),
   });
 }
 
@@ -378,17 +563,7 @@ for (let i = drivers.length; i < DRV; i++) {
 
   // veiculo
   const vrows = vehicles.map((v) => {
-    const ctx = {
-      placa: v.placa,
-      chassi: v.chassi,
-      codigoRenavam: v.renavam,
-      numeroMotor: v.motor,
-      numeroCambio: v.cambio,
-      numeroIdentificacaoProprietario: v.ownerId,
-      codigoTipoProprietario: v.ownerTipo,
-      indicadorAlarme: v.ind.ind_alarme,
-      indicadorRouboFurto: v.ind.ind_roubo_furto,
-    } as unknown as Record<string, string>;
+    const ctx = veiculoCtx(rng, v);
     const payload = payloadOf('Veiculo', rng, ctx);
     return [
       sqlStr(v.chassi),
@@ -438,17 +613,7 @@ for (let i = drivers.length; i < DRV; i++) {
 
   // condutor
   const crows = drivers.map((d) => {
-    const ctx = {
-      cpf: d.cpf,
-      numeroRegistro: d.registro,
-      numeroFormularioRenach: d.renach,
-      numeroListaImpedimento: d.impedimento,
-      numeroPgu: d.pgu,
-      numeroFormularioPid: d.pid,
-      nome: d.nome,
-      dataNascimento: d.dataNascimento,
-      nomeMae: d.nomeMae,
-    } as Record<string, string>;
+    const ctx = condutorCtx(rng, d);
     const payload = payloadOf('Condutor', rng, ctx);
     return [
       sqlStr(d.cpf),
@@ -539,16 +704,11 @@ for (let i = drivers.length; i < DRV; i++) {
     const codInf = String(rng.int(50000, 79999));
     const renainf = rng.digits(12);
     const ctx = {
-      placa: v.placa,
-      codigoRenavam: v.renavam,
-      autoInfracao: ait,
-      codigoOrgaoAutuador: org.codigo,
-      codigoInfracao: codInf,
-      codigoRenainf: renainf,
+      ...infracaoCtx(rng, v, org, ait, codInf, renainf, d),
       numeroRegistroCnh: d?.registro ?? '',
       cpf: d?.cpf ?? '',
       uf: org.uf,
-    } as Record<string, string>;
+    };
     const situ = rng.pick(['1', '2', '3']);
     irows.push([
       sqlStr(ait),
