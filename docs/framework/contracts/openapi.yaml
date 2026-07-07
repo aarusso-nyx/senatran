@@ -2171,7 +2171,7 @@ components:
         descricaoCategoriaVeiculo: { type: string }
         getufJurisdicaoVeiculo: { type: string }
         getufEmplacamentoInformada: { type: string }
-        codigoMunicipioEmplacamento: { type: integer }
+        codigoMunicipioEmplacamento: { type: string }
         descricaoMunicipioEmplacamento: { type: string }
         codigoPaisVeiculo: { type: integer }
         descricaoPaisVeiculo: { type: string }
@@ -2210,7 +2210,7 @@ components:
         medicaoConsiderada: { type: integer }
         unidadeMedida: { type: integer }
         descricaoUnidadeMedida: { type: string }
-        valorIntegralInfracao: { type: integer }
+        valorIntegralInfracao: { type: number }
         origemPossuidorVeiculo: { type: integer }
         descricaoOrigemPossuidorVeiculo: { type: string }
         tipoDocumentoPossuidor: { type: integer }
@@ -2252,7 +2252,7 @@ components:
         descricaoIndicadorExigibilidade: { type: string }
         ufPagamento: { type: string }
         dataPagamentoInfracao: { type: string, format: date-time }
-        valorPagoInfracao: { type: integer }
+        valorPagoInfracao: { type: number }
         dataRegistroPagamento: { type: string, format: date-time }
         quantidadePagamentos: { type: integer }
         tipoOcorrencia: { type: integer }
@@ -2313,13 +2313,13 @@ components:
         ufPagamento: { type: string }
         numeroDocumentoArrecadacao: { type: string }
         dataPagamentoInfracao: { type: string, format: date-time }
-        valorPago: { type: integer }
+        valorPago: { type: number }
         codigoBanco: { type: integer }
         codigoAgencia: { type: string }
         numeroTerminal: { type: integer }
         numeroAutenticacao: { type: integer }
         dataCredito: { type: string, format: date-time }
-        valorRepasse: { type: integer }
+        valorRepasse: { type: number }
         dataRegistroPagamento: { type: string, format: date-time }
         dataLancamentoPagamento: { type: string, format: date-time }
         indicadorRegistroCancelamento: { type: integer }
@@ -2648,7 +2648,7 @@ components:
         horaInfracao: { type: string }
         localOcorrenciaInfracao: { type: string }
         codigoRenainf: { type: string }
-        valorMulta: { type: integer }
+        valorMulta: { type: number }
         dataVencimento: { type: string, format: date-time }
 
     MultaInterestadualResponse:

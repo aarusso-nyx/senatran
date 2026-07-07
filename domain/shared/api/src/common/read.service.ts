@@ -125,8 +125,10 @@ export class ReadService {
       pageParams,
     );
     const items = pageR.rows.map((r) => r.payload);
+    // pg returns bigint ids as strings; the contract declares idUltimoRegistro
+    // as int64, so coerce to a number to honor it.
     const lastId = pageR.rows.length
-      ? pageR.rows[pageR.rows.length - 1].id
+      ? Number(pageR.rows[pageR.rows.length - 1].id)
       : Number(cursor ?? 0);
 
     return {

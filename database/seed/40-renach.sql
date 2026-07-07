@@ -22,7 +22,7 @@ insert into renach.clinica (codigo_clinica, cnpj, nome, uf, credenciada, ativa, 
   ('RS-CLINIC-0020', '38224219000147', 'CLINICA RS-CLINIC-0020', 'BA', true, true, '{"codigoClinica":"RS-CLINIC-0020","cnpj":"38224219000147","nome":"CLINICA RS-CLINIC-0020","uf":"BA","credenciada":true,"ativa":true}'::jsonb);
 
 insert into renach.profissional (cpf, conselho, numero_conselho, uf, codigo_clinica, credenciado, ativo, payload) values
-  ('89177194659', 'CRM', '24511', 'SE', 'RS-CLINIC-0018', true, true, '{"cpf":"89177194659","conselho":"CRM","uf":"SE","codigoClinica":"RS-CLINIC-0018","credenciado":true,"ativo":true}'::jsonb),
+  ('89177194659', 'CRM', '24511', 'PR', 'RS-CLINIC-0001', true, true, '{"cpf":"89177194659","conselho":"CRM","uf":"PR","codigoClinica":"RS-CLINIC-0001","credenciado":true,"ativo":true}'::jsonb),
   ('53292046238', 'CRM', '04596', 'PE', 'RS-CLINIC-0017', true, true, '{"cpf":"53292046238","conselho":"CRM","uf":"PE","codigoClinica":"RS-CLINIC-0017","credenciado":true,"ativo":true}'::jsonb),
   ('76872111119', 'CRM', '57546', 'BA', 'RS-CLINIC-0020', true, true, '{"cpf":"76872111119","conselho":"CRM","uf":"BA","codigoClinica":"RS-CLINIC-0020","credenciado":true,"ativo":true}'::jsonb),
   ('65953955251', 'CRP', '07505', 'MA', 'RS-CLINIC-0014', true, true, '{"cpf":"65953955251","conselho":"CRP","uf":"MA","codigoClinica":"RS-CLINIC-0014","credenciado":true,"ativo":true}'::jsonb),

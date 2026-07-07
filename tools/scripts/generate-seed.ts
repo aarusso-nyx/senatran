@@ -389,6 +389,48 @@ const VEH = 120,
 const vehicles: Vehicle[] = [];
 const drivers: Driver[] = [];
 
+// Stable fixtures captured during emit → published to database/seed/manifest.json
+// so siblings (pec, teat) can rely on known-good keys without reading raw SQL.
+let fixClinica: { codigoClinica: string; cnpj: string; uf: string } | undefined;
+let fixExaminador: { cpf: string; conselho: string; uf: string } | undefined;
+let fixRenachTipo = '';
+let fixAit:
+  | {
+      numeroAit: string;
+      situacao: string;
+      situacaoProcesso: string;
+      codigoOrgaoAutuador: string;
+      placa: string;
+      codigoInfracao: string;
+    }
+  | undefined;
+
+// Forced-scenario magic keys — single source for both the SQL emit and the
+// published manifest. [kind, keyValue, forcedStatus, meaning].
+const SCENARIO_KEYS: readonly [string, string, number, string][] = [
+  [
+    'cpf_usuario',
+    '00000000000',
+    401,
+    '401 → Não autorizado: CPF de usuário reservado.',
+  ],
+  [
+    'placa',
+    'ERR2A02',
+    402,
+    '402 → RENAINF.CASE.INVALID_STATUS — cenário de erro de negócio reservado.',
+  ],
+  ['chassi', 'ERR00000000000402', 402, '402 → erro de negócio reservado.'],
+  ['cpf', '00000000402', 402, '402 → erro de negócio reservado.'],
+  ['cnpj', '00000000000402', 402, '402 → erro de negócio reservado.'],
+  ['renavam', '00000000402', 402, '402 → erro de negócio reservado.'],
+  ['placa', 'ERR5A00', 500, '500 → erro interno reservado.'],
+  ['chassi', 'ERR00000000000500', 500, '500 → erro interno reservado.'],
+  ['cpf', '00000000500', 500, '500 → erro interno reservado.'],
+  ['cnpj', '00000000000500', 500, '500 → erro interno reservado.'],
+  ['renavam', '00000000500', 500, '500 → erro interno reservado.'],
+];
+
 const noInd = (): Record<string, boolean> => ({
   ind_alarme: false,
   ind_roubo_furto: false,
@@ -970,34 +1012,16 @@ for (let i = drivers.length; i < DRV; i++) {
       ],
     ),
   );
-  const sk: [string, string, number, string][] = [
-    [
-      'cpf_usuario',
-      '00000000000',
-      401,
-      '401 → Não autorizado: CPF de usuário reservado.',
-    ],
-    [
-      'placa',
-      'ERR2A02',
-      402,
-      '402 → RENAINF.CASE.INVALID_STATUS — cenário de erro de negócio reservado.',
-    ],
-    ['chassi', 'ERR00000000000402', 402, '402 → erro de negócio reservado.'],
-    ['cpf', '00000000402', 402, '402 → erro de negócio reservado.'],
-    ['cnpj', '00000000000402', 402, '402 → erro de negócio reservado.'],
-    ['renavam', '00000000402', 402, '402 → erro de negócio reservado.'],
-    ['placa', 'ERR5A00', 500, '500 → erro interno reservado.'],
-    ['chassi', 'ERR00000000000500', 500, '500 → erro interno reservado.'],
-    ['cpf', '00000000500', 500, '500 → erro interno reservado.'],
-    ['cnpj', '00000000000500', 500, '500 → erro interno reservado.'],
-    ['renavam', '00000000500', 500, '500 → erro interno reservado.'],
-  ];
   parts.push(
     insert(
       'mock.scenario_key',
       ['kind', 'key_value', 'force_status', 'message'],
-      sk.map((r) => [sqlStr(r[0]), sqlStr(r[1]), String(r[2]), sqlStr(r[3])]),
+      SCENARIO_KEYS.map((r) => [
+        sqlStr(r[0]),
+        sqlStr(r[1]),
+        String(r[2]),
+        sqlStr(r[3]),
+      ]),
     ),
   );
   writeFileSync(resolve(seedDir, '30-mock.sql'), parts.join('\n') + '\n');
@@ -1037,10 +1061,19 @@ const auditEvt = (
     const cod = 'RS-CLINIC-' + String(i + 1).padStart(4, '0');
     const cnj = cnpj(rng);
     const u = uf(rng);
-    const cred = rng.bool(0.85),
-      ativa = rng.bool(0.9);
+    // Draw unconditionally to keep the PRNG stream stable; clinic[0] is a
+    // guaranteed-credentialed fixture (published in manifest.json).
+    const credRaw = rng.bool(0.85),
+      ativaRaw = rng.bool(0.9);
+    const cred = i === 0 ? true : credRaw,
+      ativa = i === 0 ? true : ativaRaw;
     return { cod, cnj, u, cred, ativa };
   });
+  fixClinica = {
+    codigoClinica: clinicas[0].cod,
+    cnpj: clinicas[0].cnj,
+    uf: clinicas[0].u,
+  };
   parts.push(
     insert(
       'renach.clinica',
@@ -1071,19 +1104,25 @@ const auditEvt = (
       ]),
     ),
   );
-  const profs = Array.from({ length: 40 }, () => {
+  const profs = Array.from({ length: 40 }, (_, i) => {
     const c = cpf(rng);
     const conselho = rng.bool(0.6) ? 'CRM' : 'CRP';
     const cl = rng.pick(clinicas);
-    return {
-      c,
-      conselho,
-      cl: cl.cod,
-      u: cl.u,
-      cred: rng.bool(0.9),
-      ativo: rng.bool(0.92),
-    };
+    const credRaw = rng.bool(0.9);
+    const ativoRaw = rng.bool(0.92);
+    // prof[0] is a guaranteed credentialed CRM examiner on clinic[0] (manifest).
+    if (i === 0)
+      return {
+        c,
+        conselho: 'CRM',
+        cl: clinicas[0].cod,
+        u: clinicas[0].u,
+        cred: true,
+        ativo: true,
+      };
+    return { c, conselho, cl: cl.cod, u: cl.u, cred: credRaw, ativo: ativoRaw };
   });
+  fixExaminador = { cpf: profs[0].c, conselho: 'CRM', uf: profs[0].u };
   parts.push(
     insert(
       'renach.profissional',
@@ -1151,6 +1190,7 @@ const auditEvt = (
           'MUDANCA_CATEGORIA',
           'ADICAO_CATEGORIA',
         ]);
+        if (p.numero === 'RS123456789') fixRenachTipo = tipo;
         const payload = {
           numeroRenach: p.numero,
           cpf: p.cpf,
@@ -1248,11 +1288,24 @@ const auditEvt = (
       codigoInfracao: codInf,
       situacao: a.sit,
     };
+    // The AIT-record status the read view exposes (v_renainf_ait overrides the
+    // payload situacao with this column); distinct from the case lifecycle sit.
+    const aitStatus =
+      a.sit === 'AUTUACAO_ABERTA' ? 'VALIDADO' : 'AUTUACAO_ABERTA';
+    if (a.ait === 'A0001001')
+      fixAit = {
+        numeroAit: a.ait,
+        situacao: aitStatus,
+        situacaoProcesso: a.sit,
+        codigoOrgaoAutuador: org.codigo,
+        placa: v.placa,
+        codigoInfracao: codInf,
+      };
     aitRows.push([
       sqlStr(aid),
       sqlStr(a.ait),
       sqlStr(org.codigo),
-      sqlStr(a.sit === 'AUTUACAO_ABERTA' ? 'VALIDADO' : 'AUTUACAO_ABERTA'),
+      sqlStr(aitStatus),
       sqlStr(v.placa),
       sqlStr(codInf),
       sqlStr(dateTime(rng, 2024, 2025)),
@@ -1360,8 +1413,91 @@ const auditEvt = (
   writeFileSync(resolve(seedDir, '60-audit.sql'), parts.join('\n') + '\n');
 }
 
+// ---- emit: fixtures manifest (machine-readable, for siblings) --------------
+{
+  const drv = drivers[0];
+  const manifest = {
+    $comment:
+      'Deterministic fixtures for sibling integration (pec, teat). ' +
+      'Generated by `pnpm seed:generate` — do not edit by hand. ' +
+      'Every value below is guaranteed present after `apply.sh --sample`.',
+    masterSeed: '0x' + MASTER_SEED.toString(16),
+    auth: {
+      cpfUsuario: '12345678909',
+      certCn: 'senatran-dev-client',
+      note: 'Send x-cpf-usuario on every request; x-client-cert-cn is only checked when AUTH_CERT_SIMULATION=on.',
+    },
+    magicKeys: SCENARIO_KEYS.map(([kind, value, status, meaning]) => ({
+      kind,
+      value,
+      status,
+      meaning,
+    })),
+    read: {
+      veiculos: [
+        {
+          placa: 'ABC1D23',
+          chassi: '9BWZZZ377VT004251',
+          renavam: '00123456780',
+          proprietario: { documento: FIX_CPF, tipo: '1' },
+          indicadores: 'todos limpos (nenhuma restrição)',
+        },
+        {
+          placa: 'ABC1234',
+          chassi: '9BWZZZ377VT004252',
+          renavam: '00123456781',
+          proprietario: { documento: FIX_CNPJ, tipo: '2' },
+          indicadores: 'todos limpos (nenhuma restrição)',
+        },
+        {
+          placa: 'IND1I01',
+          chassi: '9BWZZZ377VT004253',
+          renavam: '00123456782',
+          proprietario: { documento: FIX_CPF, tipo: '1' },
+          indicadores: 'alarme, roubo/furto, transferência e penhora ativos',
+        },
+      ],
+      condutor: {
+        cpf: drv.cpf,
+        registro: drv.registro,
+        numeroRenach: drv.renach,
+        nome: drv.nome,
+        dataNascimento: drv.dataNascimento,
+      },
+    },
+    renach: {
+      processo: {
+        numeroRenach: 'RS123456789',
+        cpf: FIX_CPF,
+        situacao: 'AGUARDANDO_MEDICO',
+        tipoProcesso: fixRenachTipo,
+      },
+      clinicaCredenciada: fixClinica,
+      examinadorCredenciado: fixExaminador,
+    },
+    renainf: {
+      ait: fixAit,
+      note: 'GET /v1/renainf/autosInfracao/{numeroAit} returns `situacao` (the AIT-record status); `situacaoProcesso` is the administrative-case lifecycle state.',
+    },
+    counts: {
+      veiculos: vehicles.length,
+      condutores: drivers.length,
+      infracoes: INFR,
+      clinicas: 20,
+      profissionais: 40,
+      processosRenach: 41,
+      aitsRenainf: 61,
+      dispositivos: 15,
+    },
+  };
+  writeFileSync(
+    resolve(seedDir, 'manifest.json'),
+    JSON.stringify(manifest, null, 2) + '\n',
+  );
+}
+
 console.log(
-  'generate-seed: wrote database/seed/{10-ref,20-read,30-mock,40-renach,50-renainf,60-audit}.sql',
+  'generate-seed: wrote database/seed/{10-ref,20-read,30-mock,40-renach,50-renainf,60-audit}.sql + manifest.json',
 );
 console.log(
   `  vehicles=${vehicles.length} drivers=${drivers.length} infracoes=${INFR} audit=${audit.length}`,

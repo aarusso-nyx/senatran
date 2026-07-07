@@ -58,17 +58,25 @@ The seed guarantees a small set of **stable** identifiers with full, documented
 payloads that consumers may hardcode. These are emitted first by the generator and
 never change across reseeds:
 
-| Kind                | Value                              | Notes                                |
-| ------------------- | ---------------------------------- | ------------------------------------ |
-| placa (Mercosul)    | `ABC1D23`                          | vehicle with owner, indicators clear |
-| placa (legacy)      | `ABC1234`                          | legacy-format plate                  |
-| chassi              | _(published in the seed manifest)_ | linked to `ABC1D23`                  |
-| cpf (condutor)      | _(published in the seed manifest)_ | driver with CNH + one infraction     |
-| cnpj (proprietário) | _(published in the seed manifest)_ | company owner                        |
+| Kind                | Value               | Notes                                          |
+| ------------------- | ------------------- | ---------------------------------------------- |
+| placa (Mercosul)    | `ABC1D23`           | vehicle with owner, indicators clear           |
+| placa (legacy)      | `ABC1234`           | legacy-format plate, CNPJ owner                |
+| placa (indicadores) | `IND1I01`           | alarme + roubo/furto + transferência + penhora |
+| chassi              | `9BWZZZ377VT004251` | linked to `ABC1D23`                            |
+| renavam             | `00123456780`       | linked to `ABC1D23`                            |
+| cpf (condutor)      | `52998224725`       | driver with CNH; also owner of `ABC1D23`       |
+| cnpj (proprietário) | `11444777000161`    | company owner of `ABC1234`                     |
+| renach (processo)   | `RS123456789`       | at `AGUARDANDO_MEDICO`                         |
+| clínica credenciada | `RS-CLINIC-0001`    | credenciada + ativa                            |
+| AIT (RENAINF)       | `A0001001`          | AIT-record `situacao = AUTUACAO_ABERTA`        |
 
-> The authoritative fixture list is emitted by `pnpm seed:generate` into
-> `database/seed/README.md` (P3). This document defines the **mechanism and
-> sentinels**; the seed manifest enumerates the exact generated fixtures.
+> The **authoritative, machine-readable** fixture list — including the
+> credentialed examiner CPF, exact counts, and every magic key — is emitted by
+> `pnpm seed:generate` into [`database/seed/manifest.json`](../../../database/seed/manifest.json).
+> Siblings should read that file rather than hardcoding from this table. This
+> document defines the **mechanism and sentinels**; the manifest enumerates the
+> exact generated fixtures.
 
 ## 3. Transactional scenarios (RENACH / RENAINF)
 
@@ -95,5 +103,6 @@ The transactional endpoints are stateful, so their scenarios are driven by the
 
 Seed fixtures include processes/cases pre-positioned at representative states (e.g.
 a RENACH process at `AGUARDANDO_MEDICO`, a RENAINF case at `NOTIFICADO_AUTUACAO`) so
-consumers can drive each transition deterministically; the exact fixtures land in
-the generated `database/seed/README.md`.
+consumers can drive each transition deterministically; the exact fixtures (process
+number, credentialed clinic/examiner, AIT number and states) are enumerated in
+[`database/seed/manifest.json`](../../../database/seed/manifest.json).
