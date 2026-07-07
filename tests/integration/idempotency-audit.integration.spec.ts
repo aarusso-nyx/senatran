@@ -23,6 +23,7 @@ const ait = (numeroAit: string) => ({
   agenteAutuador: { cpf: '52998224725', matricula: 'A1' },
   infracao: { codigoInfracao: '74550', dataInfracao: '2026-01-01T10:00:00Z' },
   veiculo: { placa: 'ABC1D23' },
+  evidencias: [{ tipo: 'PHOTO', hash: 'sha256' }],
 });
 
 describe('idempotency + audit', () => {
