@@ -1,0 +1,70 @@
+# SENATRAN mock — full stack for local dev / CI / a dev-only deploy target.
+#
+#   docker compose up --build          # bring up db + schema/seed + the API
+#   curl localhost:3000/health         # -> {"status":"ok","db":"up"}
+#
+# Siblings (pec, teat) point their SENATRAN base URL at http://localhost:3000.
+# This is a mock: never point it at real DENATRAN/SENATRAN data.
+
+services:
+  # Postgres. Ephemeral by design — the seed is deterministic, so state is
+  # rebuilt on every `up` and there is nothing worth persisting.
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: senatran
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d senatran']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    # Uncomment to inspect the database from the host:
+    # ports: ['5432:5432']
+
+  # One-shot: apply DDL (in order) + the deterministic sample seed, then exit.
+  # --full drops & recreates the schema, so re-running `up` is idempotent.
+  migrate:
+    image: postgres:16
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: '5432'
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: senatran
+    volumes:
+      - ./database:/database:ro
+    entrypoint: ['bash']
+    command: ['/database/apply.sh', '--full', '--sample']
+    restart: 'no'
+
+  # The NestJS mock API.
+  app:
+    build:
+      context: .
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      PORT: '3000'
+      DATABASE_URL: postgres://postgres:postgres@db:5432/senatran
+      AUTH_CERT_SIMULATION: 'on'
+    ports:
+      - '3000:3000'
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/health').then(r=>r.json()).then(j=>process.exit(j.db==='up'?0:1)).catch(()=>process.exit(1))"
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 20s

@@ -1,0 +1,20 @@
+# Rebuilt/reinstalled inside the image
+node_modules
+dist
+*.tsbuildinfo
+
+# VCS, CI, editor
+.git
+.github
+.gitignore
+
+# Tests, coverage, governance state, docs site — not needed to build/run
+tests
+coverage
+.devai/state
+docs/site
+
+# Local artifacts
+*.log
+.DS_Store
+scratchpad

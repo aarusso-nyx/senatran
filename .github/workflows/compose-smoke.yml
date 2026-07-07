@@ -1,0 +1,47 @@
+name: compose-smoke
+
+# Builds the Docker image and brings the full stack up with docker compose,
+# then smoke-tests the running mock end to end (deploy-shaped integration).
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image and bring the stack up (waits for health)
+        run: docker compose up -d --build --wait
+
+      - name: Smoke test the running mock
+        run: |
+          set -euo pipefail
+          AUTH=(-H "x-cpf-usuario: 12345678909" -H "x-client-cert-cn: senatran-dev-client")
+
+          echo "→ /health"
+          curl -fsS http://localhost:3000/health | tee /dev/stderr | grep -q '"db":"up"'
+
+          echo "→ seeded read (fixture ABC1D23)"
+          curl -fsS "${AUTH[@]}" http://localhost:3000/v1/veiculos/placa/ABC1D23 \
+            | tee /dev/stderr | grep -q 'ABC1D23'
+
+          echo "→ magic-key forced 500 (ERR5A00)"
+          code=$(curl -s -o /dev/null -w '%{http_code}' "${AUTH[@]}" \
+            http://localhost:3000/v1/veiculos/placa/ERR5A00)
+          test "$code" = "500"
+
+          echo "→ missing auth header → 401"
+          code=$(curl -s -o /dev/null -w '%{http_code}' \
+            http://localhost:3000/v1/veiculos/placa/ABC1D23)
+          test "$code" = "401"
+
+      - name: Dump compose logs on failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

@@ -1,8 +1,9 @@
 {
   "extends": "./tsconfig.json",
+  "comment": "Emit ESM (inherits module=ESNext). package.json is type:module and sources use explicit .js specifiers, so dist runs directly under `node`.",
   "compilerOptions": {
-    "module": "CommonJS",
-    "moduleResolution": "Node",
+    "moduleResolution": "NodeNext",
+    "module": "NodeNext",
     "noEmit": false,
     "incremental": false,
     "tsBuildInfoFile": "./dist/.tsbuildinfo"

@@ -44,6 +44,24 @@ pnpm start:dev                       # http://localhost:3000
 curl localhost:3000/health           # {"status":"ok","db":"up"}
 ```
 
+### With Docker (no local Node/Postgres needed)
+
+One command brings up Postgres, applies the schema + deterministic seed, and
+starts the API — the drop-in integration target for `pec` / `teat` and for CI:
+
+```bash
+docker compose up --build            # db + migrate + app, waits until healthy
+curl localhost:3000/health           # {"status":"ok","db":"up"}
+curl -H 'x-cpf-usuario: 12345678909' -H 'x-client-cert-cn: senatran-dev-client' \
+     localhost:3000/v1/veiculos/placa/ABC1D23        # a seeded fixture
+```
+
+The stack is stateless: the seed is deterministic, so every `up` rebuilds the
+same data. Known-good fixtures and magic keys are published in
+[`database/seed/manifest.json`](database/seed/manifest.json). The
+[`compose-smoke`](.github/workflows/compose-smoke.yml) workflow builds this
+same stack and smoke-tests it on every push.
+
 ## Design in one paragraph
 
 Controllers are **thin**: they parse path/query params and call a service that
