@@ -1,0 +1,2749 @@
+openapi: 3.1.0
+info:
+  title: WSDenatran REST API (mock)
+  version: 1.0.0
+  license:
+    name: UNLICENSED
+    url: https://example.invalid/senatran/LICENSE
+  description: >-
+    Dev-only mock of the SERPRO WSDenatran REST API. This specification is the
+    authoritative contract for the `senatran` repo. The service exposes
+    read-only (GET) operations to query the Denatran (Brazilian national
+    traffic department) database for drivers (condutores), vehicles (veiculos),
+    infractions (infracoes) and related indicators.
+
+
+    Every operation requires the `x-cpf-usuario` header identifying the user
+    making the request. When a non-200 status is returned, the body follows the
+    shared ErrorResponse schema (`returnCode`, `message`).
+
+
+    Authentication: the real service uses a registered client certificate (mTLS,
+    documented by the `clientCertificate` scheme). This mock **simulates** that
+    with a header, `x-client-cert-cn` (the `clientCertSimulation` scheme), which
+    is required when `AUTH_CERT_SIMULATION=on` (the default) and ignored when
+    off. See `docs/framework/contracts/auth.md`. Not for production use.
+
+servers:
+  - url: /v1
+
+security:
+  - clientCertSimulation: []
+
+tags:
+  - name: autorizacoesAlteracaoVeiculo
+    description: Consulta de autorizações de alteração de veículo
+  - name: condutores
+    description: Consulta de condutores
+  - name: consultaCsv
+    description: Consulta do Certificado de Segurança Veicular
+  - name: indicadores
+    description: Consulta de indicadores
+  - name: infracoes
+    description: Consulta de infrações
+  - name: restricoesJudiciaisAtivas
+    description: Consulta de restrições judiciais ativas
+  - name: rouboFurto
+    description: Consulta de roubo e furto
+  - name: veiculos
+    description: Consulta de veículos
+
+paths:
+  /autorizacoesAlteracaoVeiculo/alteracoesPermitidas:
+    get:
+      tags: [autorizacoesAlteracaoVeiculo]
+      operationId: getAlteracoesPermitidas
+      summary: Consulta alterações permitidas
+      description: Consulta os tipos de alterações que são permitidas nos veículos.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlteracaoPermitidaList'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /condutores/cpf/{cpf}:
+    get:
+      tags: [condutores]
+      operationId: getCondutoresByCpf
+      summary: Consulta condutores por CPF
+      description: Consulta de condutores por CPF.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: cpf
+          in: path
+          required: true
+          description: Consulta condutores por CPF
+          schema: { type: string }
+        - $ref: '#/components/parameters/IdUltimoRegistro'
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CondutorListResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /condutores/cpf/{cpf}/registroCnh/{numeroRegistroCnh}:
+    get:
+      tags: [condutores]
+      operationId: getCondutoresByCpfAndRegistroCnh
+      summary: Consulta condutores por CPF e registro CNH
+      description: Consulta de condutores por CPF e número de registro da CNH.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: cpf
+          in: path
+          required: true
+          description: Consulta condutores por CPF
+          schema: { type: string }
+        - name: numeroRegistroCnh
+          in: path
+          required: true
+          description: Número gerado pela BINCO para identificar o condutor
+          schema: { type: string }
+        - $ref: '#/components/parameters/IdUltimoRegistro'
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CondutorListResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /condutores/formularioRenach/{formularioRenach}:
+    get:
+      tags: [condutores]
+      operationId: getCondutoresByFormularioRenach
+      summary: Consulta condutores por formulário RENACH
+      description: Consulta de condutores por número do formulário RENACH.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: formularioRenach
+          in: path
+          required: true
+          description: Número do formulário RENACH
+          schema: { type: string }
+        - $ref: '#/components/parameters/IdUltimoRegistro'
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CondutorListResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /condutores/imagens/cpf/{cpf}/registroCnh/{numeroRegistro}/segurancaCnh/{numeroSeguranca}:
+    get:
+      tags: [condutores]
+      operationId: getCondutorImagensByCpfRegistroCnhSeguranca
+      summary: Consulta validade do número de segurança da CNH (imagens)
+      description: Consulta validade do número de segurança da CNH, retornando imagens biométricas.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: cpf
+          in: path
+          required: true
+          description: Consulta condutores por CPF
+          schema: { type: string }
+        - name: numeroRegistro
+          in: path
+          required: true
+          description: Número gerado pela BINCO para identificar o condutor
+          schema: { type: string }
+        - name: numeroSeguranca
+          in: path
+          required: true
+          description: >-
+            Número gerado a partir de algoritmo específico e de propriedade do
+            DENATRAN, composto pelos dados individuais de cada CNH, permitindo a
+            validação da CNH emitida
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CondutorImagem'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /condutores/impedimento/{impedimento}:
+    get:
+      tags: [condutores]
+      operationId: getCondutoresByImpedimento
+      summary: Consulta condutores por impedimento
+      description: Consulta de condutores por número do documento gerador do impedimento.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: impedimento
+          in: path
+          required: true
+          description: Número do documento gerador do impedimento
+          schema: { type: string }
+        - $ref: '#/components/parameters/IdUltimoRegistro'
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CondutorListResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /condutores/infracoes/registroCnh/{numeroRegistroCnh}:
+    get:
+      tags: [condutores]
+      operationId: getCondutorInfracoesByRegistroCnh
+      summary: Consulta extrato de infrações pela CNH do condutor
+      description: Consulta extrato de infrações pelo registro da Carteira Nacional de Habilitação do condutor.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: numeroRegistroCnh
+          in: path
+          required: true
+          description: Número gerado pela BINCO para identificar o condutor
+          schema: { type: string }
+        - name: dataInicio
+          in: query
+          required: false
+          description: Data inicial em que pode ter ocorrido a infração de trânsito.
+          schema: { type: string }
+        - name: dataFim
+          in: query
+          required: false
+          description: Data final em que pode ter ocorrido a infração de trânsito.
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CondutorInfracaoExtrato'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /condutores/nomeCondutor/{nomeCondutor}/dataNascimento/{dataNascimento}/nomeMae/{nomeMae}:
+    get:
+      tags: [condutores]
+      operationId: getCondutoresByDadosIdentificatorios
+      summary: Consultar condutor por dados identificatórios
+      description: Consulta de condutores por Nome, Data de Nascimento e Nome da mãe.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: nomeCondutor
+          in: path
+          required: true
+          description: Nome do condutor
+          schema: { type: string }
+        - name: dataNascimento
+          in: path
+          required: true
+          description: Data de nascimento do condutor
+          schema: { type: string }
+        - name: nomeMae
+          in: path
+          required: true
+          description: Nome da mãe do condutor
+          schema: { type: string }
+        - $ref: '#/components/parameters/IdUltimoRegistro'
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CondutorListResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /condutores/pgu/{pgu}:
+    get:
+      tags: [condutores]
+      operationId: getCondutoresByPgu
+      summary: Consulta condutores por PGU
+      description: Consulta de condutores por número do Prontuário Geral Unificado (PGU).
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: pgu
+          in: path
+          required: true
+          description: Número do Prontuário Geral Unificado
+          schema: { type: string }
+        - $ref: '#/components/parameters/IdUltimoRegistro'
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CondutorListResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /condutores/pid/{pid}:
+    get:
+      tags: [condutores]
+      operationId: getCondutoresByPid
+      summary: Consulta condutores por PID
+      description: Consulta de condutores por PID.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: pid
+          in: path
+          required: true
+          description: Número do PID (Permissão Internacional para Dirigir)
+          schema: { type: string }
+        - $ref: '#/components/parameters/IdUltimoRegistro'
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CondutorListResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /condutores/registroCnh/{numeroRegistroCnh}:
+    get:
+      tags: [condutores]
+      operationId: getCondutoresByRegistroCnh
+      summary: Consulta condutores por registro
+      description: Consulta de condutores por número de registro da CNH.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: numeroRegistroCnh
+          in: path
+          required: true
+          description: Número gerado pela BINCO para identificar o condutor
+          schema: { type: string }
+        - $ref: '#/components/parameters/IdUltimoRegistro'
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CondutorListResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /condutores/retrato/cpf/{cpf}/registroCnh/{numeroRegistro}/segurancaCnh/{numeroSeguranca}:
+    get:
+      tags: [condutores]
+      operationId: getCondutorRetratoByCpfRegistroCnhSeguranca
+      summary: Consulta validade do número de segurança da CNH (retrato)
+      description: Consulta validade do número de segurança da CNH, retornando o retrato do condutor.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: cpf
+          in: path
+          required: true
+          description: Consulta condutores por CPF
+          schema: { type: string }
+        - name: numeroRegistro
+          in: path
+          required: true
+          description: Número gerado pela BINCO para identificar o condutor
+          schema: { type: string }
+        - name: numeroSeguranca
+          in: path
+          required: true
+          description: >-
+            Número gerado a partir de algoritmo específico e de propriedade do
+            DENATRAN, composto pelos dados individuais de cada CNH, permitindo a
+            validação da CNH emitida
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CondutorImagem'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /condutores/validacao/cpf/{cpf}/registroCnh/{numeroRegistro}/segurancaCnh/{numeroSeguranca}:
+    get:
+      tags: [condutores]
+      operationId: getCondutorValidacaoByCpfRegistroCnhSeguranca
+      summary: Consulta validade do número de segurança da CNH (validação)
+      description: Consulta validade do número de segurança da CNH.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: cpf
+          in: path
+          required: true
+          description: Consulta condutores por CPF
+          schema: { type: string }
+        - name: numeroRegistro
+          in: path
+          required: true
+          description: Número gerado pela BINCO para identificar o condutor
+          schema: { type: string }
+        - name: numeroSeguranca
+          in: path
+          required: true
+          description: >-
+            Número gerado a partir de algoritmo específico e de propriedade do
+            DENATRAN, composto pelos dados individuais de cada CNH, permitindo a
+            validação da CNH emitida
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CondutorImagem'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /ConsultaCSV/chassi/{chassi}:
+    get:
+      tags: [consultaCsv]
+      operationId: getConsultaCsvByChassi
+      summary: Consulta CSVIntegrador por chassi
+      description: Consulta CSVIntegrador por chassi.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: chassi
+          in: path
+          required: true
+          description: Chassi do veículo
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsultaCsvList'
+        '204':
+          description: Sem conteúdo.
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /ConsultaCSV/placa/{placa}:
+    get:
+      tags: [consultaCsv]
+      operationId: getConsultaCsvByPlaca
+      summary: Consulta CSVIntegrador por placa
+      description: Consulta CSVIntegrador por placa.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: placa
+          in: path
+          required: true
+          description: Código que identifica externamente um veículo (a nível nacional)
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsultaCsvList'
+        '204':
+          description: Sem conteúdo.
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /indicadores/alarme/chassi/{chassi}:
+    get:
+      tags: [indicadores]
+      operationId: getIndicadorAlarmeByChassi
+      summary: Consulta indicador de alarme por chassi
+      description: Informa da existência ou não de alarme sobre um veículo.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: chassi
+          in: path
+          required: true
+          description: Chassi do veículo
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema: { type: boolean }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /indicadores/alarme/placa/{placa}:
+    get:
+      tags: [indicadores]
+      operationId: getIndicadorAlarmeByPlaca
+      summary: Consulta indicador de alarme por placa
+      description: Informa da existência ou não de alarme sobre um veículo.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: placa
+          in: path
+          required: true
+          description: Código que identifica externamente um veículo (a nível nacional)
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema: { type: boolean }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /indicadores/restricaoJudicial/chassi/{chassi}:
+    get:
+      tags: [indicadores]
+      operationId: getIndicadorRestricaoJudicialByChassi
+      summary: Consulta indicador de restrição judicial por chassi
+      description: Informa da existência ou não de indicadores judiciais sobre um veículo.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: chassi
+          in: path
+          required: true
+          description: Chassi do veículo
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IndicadorRestricaoJudicial'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /indicadores/restricaoJudicial/placa/{placa}:
+    get:
+      tags: [indicadores]
+      operationId: getIndicadorRestricaoJudicialByPlaca
+      summary: Consulta indicador de restrição judicial por placa
+      description: Informa da existência ou não de indicadores judiciais sobre um veículo.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: placa
+          in: path
+          required: true
+          description: Código que identifica externamente um veículo (a nível nacional)
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IndicadorRestricaoJudicial'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /indicadores/rouboFurto/chassi/{chassi}:
+    get:
+      tags: [indicadores]
+      operationId: getIndicadorRouboFurtoByChassi
+      summary: Consulta indicador de roubo/furto por chassi
+      description: Informa da existência ou não de roubo e furto sobre um veículo.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: chassi
+          in: path
+          required: true
+          description: Chassi do veículo
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema: { type: boolean }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /indicadores/rouboFurto/placa/{placa}:
+    get:
+      tags: [indicadores]
+      operationId: getIndicadorRouboFurtoByPlaca
+      summary: Consulta indicador de roubo/furto por placa
+      description: Informa da existência ou não de roubo e furto sobre um veículo.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: placa
+          in: path
+          required: true
+          description: Código que identifica externamente um veículo (a nível nacional)
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema: { type: boolean }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /indicadores/sinistro/chassi/{chassi}:
+    get:
+      tags: [indicadores]
+      operationId: getIndicadorSinistroByChassi
+      summary: Consulta indicador de sinistro por chassi
+      description: Informa da existência ou não de indicadores de sinistro sobre um veículo.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: chassi
+          in: path
+          required: true
+          description: Chassi do veículo
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IndicadorSinistro'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /indicadores/sinistro/placa/{placa}:
+    get:
+      tags: [indicadores]
+      operationId: getIndicadorSinistroByPlaca
+      summary: Consulta indicador de sinistro por placa
+      description: Informa da existência ou não de indicadores de sinistro sobre um veículo.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: placa
+          in: path
+          required: true
+          description: Código que identifica externamente um veículo (a nível nacional)
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IndicadorSinistro'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /infracoes/ait/{autoInfracao}/orgaoAutuador/{orgao}/infracao/{codigoInfracao}:
+    get:
+      tags: [infracoes]
+      operationId: getInfracoesByAit
+      summary: Consulta de infrações por AIT, infração e órgão autuador
+      description: Consulta de infrações por Auto de Infração de Trânsito, código da infração e órgão autuador.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: orgao
+          in: path
+          required: true
+          description: Código do órgão autuador
+          schema: { type: string }
+        - name: autoInfracao
+          in: path
+          required: true
+          description: Número do auto de Infração.
+          schema: { type: string }
+        - name: codigoInfracao
+          in: path
+          required: true
+          description: Código da infração
+          schema: { type: string }
+        - $ref: '#/components/parameters/IdUltimoRegistro'
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InfracaoListResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /infracoes/cnpj/{cnpj}:
+    get:
+      tags: [infracoes]
+      operationId: getInfracoesByCnpj
+      summary: Consulta de infrações pelo CNPJ do condutor/proprietário
+      description: Consulta de infrações pelo CNPJ do condutor/proprietário.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: cnpj
+          in: path
+          required: true
+          description: Número do CNPJ do condutor/proprietário
+          schema: { type: string }
+        - $ref: '#/components/parameters/IdUltimoRegistro'
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InfracaoListResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /infracoes/cpf/{cpf}:
+    get:
+      tags: [infracoes]
+      operationId: getInfracoesByCpf
+      summary: Consulta de infrações pelo CPF do condutor/proprietário
+      description: Consulta de infrações pelo CPF do condutor/proprietário.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: cpf
+          in: path
+          required: true
+          description: Número do CPF do condutor/proprietário
+          schema: { type: string }
+        - $ref: '#/components/parameters/IdUltimoRegistro'
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InfracaoListResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /infracoes/habilitacaoEstrangeira/{identificacao}:
+    get:
+      tags: [infracoes]
+      operationId: getInfracoesByHabilitacaoEstrangeira
+      summary: Consulta de infrações por habilitação estrangeira
+      description: Consulta de infrações pela identificação da habilitação estrangeira do condutor/proprietário.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: identificacao
+          in: path
+          required: true
+          description: Identificação da habilitação estrangeira
+          schema: { type: string }
+        - $ref: '#/components/parameters/IdUltimoRegistro'
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InfracaoListResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /infracoes/ocorrencias/ait/{autoInfracao}/orgaoAutuador/{orgao}/infracao/{codigoInfracao}:
+    get:
+      tags: [infracoes]
+      operationId: getInfracaoOcorrenciasByAit
+      summary: Consulta ocorrências de infrações pelo AIT
+      description: Consulta ocorrências de infrações através do auto de infração de trânsito.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: orgao
+          in: path
+          required: true
+          description: Código do órgão autuador
+          schema: { type: string }
+        - name: autoInfracao
+          in: path
+          required: true
+          description: Número do auto de Infração.
+          schema: { type: string }
+        - name: codigoInfracao
+          in: path
+          required: true
+          description: Código da infração
+          schema: { type: string }
+        - name: dataInicio
+          in: query
+          required: false
+          description: Data inicial em que pode ter ocorrido a infração de trânsito.
+          schema: { type: string }
+        - name: dataFim
+          in: query
+          required: false
+          description: Data final em que pode ter ocorrido a infração de trânsito.
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InfracaoOcorrenciaResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /infracoes/pagamentos/ait/{autoInfracao}/orgaoAutuador/{orgao}/infracao/{codigoInfracao}:
+    get:
+      tags: [infracoes]
+      operationId: getInfracaoPagamentosByAit
+      summary: Consulta pagamentos de infrações pelo AIT
+      description: Consulta pagamentos de infrações através do auto de infração de trânsito.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: orgao
+          in: path
+          required: true
+          description: Código do órgão autuador
+          schema: { type: string }
+        - name: autoInfracao
+          in: path
+          required: true
+          description: Número do auto de Infração.
+          schema: { type: string }
+        - name: codigoInfracao
+          in: path
+          required: true
+          description: Código da infração
+          schema: { type: string }
+        - name: dataInicio
+          in: query
+          required: false
+          description: Data inicial em que pode ter ocorrido o pagamento da infração de trânsito.
+          schema: { type: string }
+        - name: dataFim
+          in: query
+          required: false
+          description: Data final em que pode ter ocorrido o pagamento da infração de trânsito.
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InfracaoPagamentoResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /infracoes/pgu/{pgu}/uf/{uf}:
+    get:
+      tags: [infracoes]
+      operationId: getInfracoesByPguAndUf
+      summary: Consulta de infrações pelo CNH modelo antigo do condutor/proprietário
+      description: Consulta de infrações pelo modelo antigo de carteira nacional de habilitação do condutor/proprietário.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: pgu
+          in: path
+          required: true
+          description: Número do Prontuário Geral Unificado
+          schema: { type: string }
+        - name: uf
+          in: path
+          required: true
+          description: Unidade da Federação
+          schema: { type: string }
+        - $ref: '#/components/parameters/IdUltimoRegistro'
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InfracaoListResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /infracoes/placa/{placa}/exigibilidade/{situacaoExigibilidade}:
+    get:
+      tags: [infracoes]
+      operationId: getInfracoesByPlacaAndExigibilidade
+      summary: Consulta de infrações por placa e exigibilidade
+      description: Consulta de infrações pela placa do veículo e situação de exigibilidade.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: placa
+          in: path
+          required: true
+          description: Código que identifica externamente um veículo (a nível nacional)
+          schema: { type: string }
+        - name: situacaoExigibilidade
+          in: path
+          required: true
+          description: Situação de exigibilidade da infração
+          schema: { type: string }
+        - $ref: '#/components/parameters/IdUltimoRegistro'
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InfracaoListResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /infracoes/registroCnh/{cnh}:
+    get:
+      tags: [infracoes]
+      operationId: getInfracoesByRegistroCnh
+      summary: Consulta de infrações pelo CNH do condutor/proprietário
+      description: Consulta de infrações pelo registro da CNH do condutor/proprietário.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: cnh
+          in: path
+          required: true
+          description: Número gerado pela BINCO para identificar o condutor
+          schema: { type: string }
+        - $ref: '#/components/parameters/IdUltimoRegistro'
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InfracaoListResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /infracoes/renainf/{numeroRenainf}:
+    get:
+      tags: [infracoes]
+      operationId: getInfracoesByRenainf
+      summary: Consulta de infrações por RENAINF
+      description: Consulta de infrações pelo número RENAINF.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: numeroRenainf
+          in: path
+          required: true
+          description: Número RENAINF da infração
+          schema: { type: string }
+        - $ref: '#/components/parameters/IdUltimoRegistro'
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InfracaoListResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /restricoesJudiciaisAtivas/placa/{placa}:
+    get:
+      tags: [restricoesJudiciaisAtivas]
+      operationId: getRestricoesJudiciaisAtivasByPlaca
+      summary: Consulta de restrições judiciais ativas pela placa
+      description: Consulta de restrições judiciais ativas pela placa do veículo.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: placa
+          in: path
+          required: true
+          description: Código que identifica externamente um veículo (a nível nacional)
+          schema: { type: string }
+        - name: dataInicio
+          in: query
+          required: false
+          description: Data inicial da inclusão da restrição judicial
+          schema: { type: string }
+        - name: dataFim
+          in: query
+          required: false
+          description: Data final da inclusão da restrição judicial
+          schema: { type: string }
+        - $ref: '#/components/parameters/IdUltimoRegistro'
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RestricaoJudicialResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /restricoesJudiciaisAtivas/placa/{placa}/renavam/{renavam}:
+    get:
+      tags: [restricoesJudiciaisAtivas]
+      operationId: getRestricoesJudiciaisAtivasByPlacaAndRenavam
+      summary: Consulta de restrições judiciais ativas pela placa e Renavam
+      description: Consulta de restrições judiciais ativas pela placa e Renavam do veículo.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: renavam
+          in: path
+          required: true
+          description: Código que identifica a inscrição no Registro Nacional de Veículos Automotores
+          schema: { type: string }
+        - name: placa
+          in: path
+          required: true
+          description: Código que identifica externamente um veículo (a nível nacional)
+          schema: { type: string }
+        - name: dataInicio
+          in: query
+          required: false
+          description: Data inicial da inclusão da restrição judicial
+          schema: { type: string }
+        - name: dataFim
+          in: query
+          required: false
+          description: Data final da inclusão da restrição judicial
+          schema: { type: string }
+        - $ref: '#/components/parameters/IdUltimoRegistro'
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RestricaoJudicialResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /rouboFurto/emAberto/chassi/{chassi}:
+    get:
+      tags: [rouboFurto]
+      operationId: getRouboFurtoEmAbertoByChassi
+      summary: Consulta Roubo e Furto em aberto por chassi
+      description: >-
+        Consulta ocorrências policiais de roubo e furto em aberto (declaração com
+        ou sem recuperação, porém sem devolução) ou alarme ativo registrado para o
+        veículo do chassi informado.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: chassi
+          in: path
+          required: true
+          description: Chassi do veículo
+          schema: { type: string }
+        - $ref: '#/components/parameters/IdUltimoRegistro'
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RouboFurtoResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /rouboFurto/emAberto/placa/{placa}:
+    get:
+      tags: [rouboFurto]
+      operationId: getRouboFurtoEmAbertoByPlaca
+      summary: Consulta Roubo e Furto em aberto por placa
+      description: >-
+        Consulta ocorrências policiais de roubo e furto em aberto (declaração com
+        ou sem recuperação, porém sem devolução) ou alarme ativo registrado para o
+        veículo da placa informada.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: placa
+          in: path
+          required: true
+          description: Código que identifica externamente um veículo (a nível nacional)
+          schema: { type: string }
+        - $ref: '#/components/parameters/IdUltimoRegistro'
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RouboFurtoResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /veiculos/cambio/{cambio}:
+    get:
+      tags: [veiculos]
+      operationId: getVeiculoByCambio
+      summary: Consulta veículo por câmbio
+      description: Consulta de veículo por câmbio.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: cambio
+          in: path
+          required: true
+          description: Número do câmbio do veículo
+          schema: { type: string }
+        - $ref: '#/components/parameters/IdUltimoRegistro'
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VeiculoListResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /veiculos/chassi/{chassi}:
+    get:
+      tags: [veiculos]
+      operationId: getVeiculoByChassi
+      summary: Consulta veículo por chassi
+      description: Consulta de veículo por chassi.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: chassi
+          in: path
+          required: true
+          description: Chassi do veículo
+          schema: { type: string }
+        - $ref: '#/components/parameters/IdUltimoRegistro'
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VeiculoListResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /veiculos/codigoSegurancaCrv/{codigoSegurancaCrv}/cnpj/{cnpj}/renavam/{renavam}/placa/{placa}:
+    get:
+      tags: [veiculos]
+      operationId: getVeiculoCodigoSegurancaCrvByCnpj
+      summary: Consulta validade número de segurança CRV
+      description: Consulta validade do número de segurança CRV pelo CNPJ do proprietário, Renavam e placa.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: codigoSegurancaCrv
+          in: path
+          required: true
+          description: Número de segurança CRV que será validado
+          schema: { type: string }
+        - name: cnpj
+          in: path
+          required: true
+          description: Número do CNPJ do proprietário
+          schema: { type: string }
+        - name: renavam
+          in: path
+          required: true
+          description: Código que identifica a inscrição no Registro Nacional de Veículos Automotores
+          schema: { type: string }
+        - name: placa
+          in: path
+          required: true
+          description: Código que identifica externamente um veículo (a nível nacional)
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CodigoSegurancaCrv'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /veiculos/codigoSegurancaCrv/{codigoSegurancaCrv}/cpf/{cpf}/renavam/{renavam}/placa/{placa}:
+    get:
+      tags: [veiculos]
+      operationId: getVeiculoCodigoSegurancaCrvByCpf
+      summary: Consulta validade número de segurança CRV
+      description: Consulta validade do número de segurança CRV pelo CPF do proprietário, Renavam e placa.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: codigoSegurancaCrv
+          in: path
+          required: true
+          description: Número de segurança CRV que será validado
+          schema: { type: string }
+        - name: cpf
+          in: path
+          required: true
+          description: Número do CPF do proprietário
+          schema: { type: string }
+        - name: renavam
+          in: path
+          required: true
+          description: Código que identifica a inscrição no Registro Nacional de Veículos Automotores
+          schema: { type: string }
+        - name: placa
+          in: path
+          required: true
+          description: Código que identifica externamente um veículo (a nível nacional)
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CodigoSegurancaCrv'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /veiculos/comunicacaoVenda/cnpj/{cnpj}/renavam/{renavam}/placa/{placa}:
+    get:
+      tags: [veiculos]
+      operationId: getComunicacaoVendaByCnpj
+      summary: Consulta comunicação de venda do veículo
+      description: Consulta comunicação de venda do veículo com a placa, Renavam e proprietário informado.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: cnpj
+          in: path
+          required: true
+          description: Número do CNPJ do proprietário
+          schema: { type: string }
+        - name: placa
+          in: path
+          required: true
+          description: Código que identifica externamente um veículo (a nível nacional)
+          schema: { type: string }
+        - name: renavam
+          in: path
+          required: true
+          description: Código que identifica a inscrição no Registro Nacional de Veículos Automotores
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComunicacaoVenda'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /veiculos/comunicacaoVenda/cpf/{cpf}/renavam/{renavam}/placa/{placa}:
+    get:
+      tags: [veiculos]
+      operationId: getComunicacaoVendaByCpf
+      summary: Consulta comunicação de venda do veículo
+      description: Consulta comunicação de venda do veículo com a placa, Renavam e proprietário informado.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: cpf
+          in: path
+          required: true
+          description: Número do CPF do proprietário
+          schema: { type: string }
+        - name: placa
+          in: path
+          required: true
+          description: Código que identifica externamente um veículo (a nível nacional)
+          schema: { type: string }
+        - name: renavam
+          in: path
+          required: true
+          description: Código que identifica a inscrição no Registro Nacional de Veículos Automotores
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComunicacaoVenda'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /veiculos/enderecoPossuidor/placa/{placa}:
+    get:
+      tags: [veiculos]
+      operationId: getEnderecoPossuidorByPlaca
+      summary: Consulta do endereço do possuidor do veículo por placa
+      description: Consulta do endereço do possuidor informando somente a placa.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: placa
+          in: path
+          required: true
+          description: Código que identifica externamente um veículo (a nível nacional)
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnderecoPossuidor'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /veiculos/enderecoPossuidor/placa/{placa}/renavam/{renavam}:
+    get:
+      tags: [veiculos]
+      operationId: getEnderecoPossuidorByPlacaAndRenavam
+      summary: Consulta do endereço do possuidor do veículo
+      description: Consulta do endereço do possuidor do veículo com a placa e Renavam informados.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: renavam
+          in: path
+          required: true
+          description: Código que identifica a inscrição no Registro Nacional de Veículos Automotores
+          schema: { type: string }
+        - name: placa
+          in: path
+          required: true
+          description: Código que identifica externamente um veículo (a nível nacional)
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnderecoPossuidor'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /veiculos/motor/{motor}:
+    get:
+      tags: [veiculos]
+      operationId: getVeiculoByMotor
+      summary: Consulta veículo por motor
+      description: Consulta de veículo por motor.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: motor
+          in: path
+          required: true
+          description: Número do motor do veículo
+          schema: { type: string }
+        - $ref: '#/components/parameters/IdUltimoRegistro'
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VeiculoListResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /veiculos/multaInterestadual/cnpj/{cnpj}/renavam/{renavam}/placa/{placa}:
+    get:
+      tags: [veiculos]
+      operationId: getMultaInterestadualByCnpj
+      summary: Consulta multas interestaduais do proprietário do veículo
+      description: Consulta multas interestaduais do proprietário do veículo com a placa, Renavam e proprietário informado.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: cnpj
+          in: path
+          required: true
+          description: Número do CNPJ do proprietário
+          schema: { type: string }
+        - name: placa
+          in: path
+          required: true
+          description: Código que identifica externamente um veículo (a nível nacional)
+          schema: { type: string }
+        - name: renavam
+          in: path
+          required: true
+          description: Código que identifica a inscrição no Registro Nacional de Veículos Automotores
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MultaInterestadualResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /veiculos/multaInterestadual/cpf/{cpf}/renavam/{renavam}/placa/{placa}:
+    get:
+      tags: [veiculos]
+      operationId: getMultaInterestadualByCpf
+      summary: Consulta multas interestaduais do proprietário do veículo
+      description: Consulta multas interestaduais do proprietário do veículo com a placa, Renavam e proprietário informado.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: cpf
+          in: path
+          required: true
+          description: Número do CPF do proprietário
+          schema: { type: string }
+        - name: placa
+          in: path
+          required: true
+          description: Código que identifica externamente um veículo (a nível nacional)
+          schema: { type: string }
+        - name: renavam
+          in: path
+          required: true
+          description: Código que identifica a inscrição no Registro Nacional de Veículos Automotores
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MultaInterestadualResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /veiculos/placa/{placa}:
+    get:
+      tags: [veiculos]
+      operationId: getVeiculoByPlaca
+      summary: Consulta veículo por placa
+      description: Consulta de veículo por placa.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: placa
+          in: path
+          required: true
+          description: Código que identifica externamente um veículo (a nível nacional)
+          schema: { type: string }
+        - $ref: '#/components/parameters/IdUltimoRegistro'
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VeiculoListResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /veiculos/proprietario/cnpj/{cnpj}/chassi/{chassi}/renavam/{renavam}:
+    get:
+      tags: [veiculos]
+      operationId: getVeiculoByProprietarioCnpjChassiRenavam
+      summary: Consulta veículo por proprietário, chassi e renavam
+      description: Consulta veículo por proprietário (CNPJ), chassi e renavam.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: cnpj
+          in: path
+          required: true
+          description: Número do CNPJ do proprietário
+          schema: { type: string }
+        - name: chassi
+          in: path
+          required: true
+          description: Chassi do veículo
+          schema: { type: string }
+        - name: renavam
+          in: path
+          required: true
+          description: Código que identifica a inscrição no Registro Nacional de Veículos Automotores
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Veiculo'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /veiculos/proprietario/cnpj/{cnpj}/placa/{placa}/renavam/{renavam}:
+    get:
+      tags: [veiculos]
+      operationId: getVeiculoByProprietarioCnpjPlacaRenavam
+      summary: Consulta veículo por proprietário, placa e renavam
+      description: Consulta veículo por proprietário (CNPJ), placa e renavam.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: cnpj
+          in: path
+          required: true
+          description: Número do CNPJ do proprietário
+          schema: { type: string }
+        - name: placa
+          in: path
+          required: true
+          description: Código que identifica externamente um veículo (a nível nacional)
+          schema: { type: string }
+        - name: renavam
+          in: path
+          required: true
+          description: Código que identifica a inscrição no Registro Nacional de Veículos Automotores
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Veiculo'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /veiculos/proprietario/cnpj/{identificacao}:
+    get:
+      tags: [veiculos]
+      operationId: getVeiculosByProprietarioCnpj
+      summary: Consulta veículo por proprietário
+      description: Consulta de veículo pela identificação única do proprietário pessoa jurídica.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: identificacao
+          in: path
+          required: true
+          description: Identificação única do proprietário (CNPJ)
+          schema: { type: string }
+        - $ref: '#/components/parameters/IdUltimoRegistro'
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VeiculoListResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /veiculos/proprietario/cpf/{cpf}/chassi/{chassi}/renavam/{renavam}:
+    get:
+      tags: [veiculos]
+      operationId: getVeiculoByProprietarioCpfChassiRenavam
+      summary: Consulta veículo por proprietário, chassi e renavam
+      description: Consulta veículo por proprietário (CPF), chassi e renavam.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: cpf
+          in: path
+          required: true
+          description: Número do CPF do proprietário
+          schema: { type: string }
+        - name: chassi
+          in: path
+          required: true
+          description: Chassi do veículo
+          schema: { type: string }
+        - name: renavam
+          in: path
+          required: true
+          description: Código que identifica a inscrição no Registro Nacional de Veículos Automotores
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Veiculo'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /veiculos/proprietario/cpf/{cpf}/placa/{placa}/renavam/{renavam}:
+    get:
+      tags: [veiculos]
+      operationId: getVeiculoByProprietarioCpfPlacaRenavam
+      summary: Consulta veículo por proprietário, placa e renavam
+      description: Consulta veículo por proprietário (CPF), placa e renavam.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: cpf
+          in: path
+          required: true
+          description: Número do CPF do proprietário
+          schema: { type: string }
+        - name: placa
+          in: path
+          required: true
+          description: Código que identifica externamente um veículo (a nível nacional)
+          schema: { type: string }
+        - name: renavam
+          in: path
+          required: true
+          description: Código que identifica a inscrição no Registro Nacional de Veículos Automotores
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Veiculo'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /veiculos/proprietario/cpf/{identificacao}:
+    get:
+      tags: [veiculos]
+      operationId: getVeiculosByProprietarioCpf
+      summary: Consulta veículo por proprietário
+      description: Consulta de veículo pela identificação única do proprietário pessoa física.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: identificacao
+          in: path
+          required: true
+          description: Identificação única do proprietário (CPF)
+          schema: { type: string }
+        - $ref: '#/components/parameters/IdUltimoRegistro'
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VeiculoListResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /veiculos/recall/chassi/{chassi}:
+    get:
+      tags: [veiculos]
+      operationId: getVeiculoRecallByChassi
+      summary: Consulta de recalls em aberto do veículo
+      description: Consulta de recalls em aberto do veículo com o chassi informado.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: chassi
+          in: path
+          required: true
+          description: Chassi do veículo
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecallResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /veiculos/renavam/{renavam}:
+    get:
+      tags: [veiculos]
+      operationId: getVeiculoByRenavam
+      summary: Consulta veículo por RENAVAM
+      description: Consulta de veículo por RENAVAM.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: renavam
+          in: path
+          required: true
+          description: Código que identifica a inscrição no Registro Nacional de Veículos Automotores
+          schema: { type: string }
+        - $ref: '#/components/parameters/IdUltimoRegistro'
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VeiculoListResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+components:
+  securitySchemes:
+    clientCertificate:
+      type: mutualTLS
+      description: >-
+        Real-service authentication: client digital certificate (mTLS). Using the
+        service requires prior registration of the certificate. Documented for
+        fidelity; the mock does not perform a TLS handshake.
+    clientCertSimulation:
+      type: apiKey
+      in: header
+      name: x-client-cert-cn
+      description: >-
+        Mock stand-in for the real mTLS certificate. Send the allowlisted
+        certificate Common Name in the `x-client-cert-cn` header. Enforced when
+        `AUTH_CERT_SIMULATION=on` (default); ignored when off. Every request must
+        also send `x-cpf-usuario`. See `docs/framework/contracts/auth.md`.
+
+  parameters:
+    XCpfUsuario:
+      name: x-cpf-usuario
+      in: header
+      required: true
+      description: CPF do usuário que está fazendo a requisição
+      schema:
+        type: string
+    IdUltimoRegistro:
+      name: idUltimoRegistro
+      in: query
+      required: false
+      description: Consulta é feita a partir do registro com o id informado nesse campo
+      schema:
+        type: integer
+        format: int64
+
+  responses:
+    BadRequest:
+      description: Requisição inválida. A requisição não foi aceita, geralmente por falta de um parâmetro requerido.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Não autorizado. Problemas durante a autenticação do certificado ou do CPF do usuário.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    BusinessError:
+      description: Requisição falhou. Os parâmetros foram validados, mas houve algum erro de negócio.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Não encontrado. O recurso solicitado não existe.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ServerError:
+      description: Erro no servidor. Ocorreu algum erro interno.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        returnCode:
+          type: integer
+        message:
+          type: string
+
+    AlteracaoPermitida:
+      type: object
+      properties:
+        mapeamentoAutomatico: { type: boolean }
+        codigoTipoAlteracao: { type: string }
+        codigoAlteracao: { type: string }
+        descricaoAlteracao: { type: string }
+        codigoSistema: { type: integer }
+
+    AlteracaoPermitidaList:
+      type: array
+      items:
+        $ref: '#/components/schemas/AlteracaoPermitida'
+
+    CondutorOcorrencia:
+      type: object
+      properties:
+        mapeamentoAutomatico: { type: boolean }
+        ufDetranBloqueio: { type: string }
+        dataImpedimentoBloqueio: { type: string, format: date-time }
+        motivoImpedimentoBloqueio: { type: string }
+        descricaoMotivoImpedimentoBloqueio: { type: string }
+        orgaoResponsavelImpedimentoBloqueio: { type: integer }
+        documentoGeradorImpedimentoBloqueio: { type: string }
+        dataInicioImpedimentoBloqueio: { type: string, format: date-time }
+        dataTerminoImpedimentoBloqueio: { type: string, format: date-time }
+        decricaoBloqueio: { type: string }
+        tipoDecisaoBloqueio: { type: integer }
+        descricaoDecisaoBloqueio: { type: string }
+        recolhimentoCnhBloqueada: { type: boolean }
+        getrequisitosLiberacaoBloqueio: { type: string }
+        prazoPenalBloqueio: { type: integer }
+        tipoPrazoPenalBloqueio: { type: integer }
+        prazoPenalTotalBloqueio: { type: integer }
+        tipoPrazoTotalBloqueio: { type: integer }
+        descricaoPrazoTotalBloqueio: { type: string }
+        descricaoPrazoBloqueio: { type: string }
+
+    Condutor:
+      type: object
+      properties:
+        mapeamentoAutomatico: { type: boolean }
+        ufDominio: { type: string }
+        numeroFormularioRenach: { type: string }
+        numeroRegistro: { type: string }
+        numeroFormularioCnh: { type: string }
+        numeroListaImpedimento: { type: string }
+        nome: { type: string }
+        dataNascimento: { type: string, format: date-time }
+        sexo: { type: integer }
+        nomeMae: { type: string }
+        nomePai: { type: string }
+        tipoDocumento: { type: integer }
+        numeroDocumento: { type: string }
+        orgaoExpedidorDocumento: { type: string }
+        ufExpedidorDocumento: { type: string }
+        cpf: { type: string }
+        localidadeNascimento: { type: string }
+        descricaoLocalidadeNascimento: { type: string }
+        nacionalidade: { type: integer }
+        dataCadastramento: { type: string, format: date-time }
+        enderecoLogradouro: { type: string }
+        enderecoNumero: { type: string }
+        enderecoComplemento: { type: string }
+        enderecoBairro: { type: string }
+        enderecoCep: { type: string }
+        enderecoMunicipio: { type: string }
+        descricaoEnderecoMunicipio: { type: string }
+        enderecoUf: { type: string }
+        numeroPgu: { type: string }
+        motivoRequerimento1: { type: string }
+        motivoRequerimento2: { type: string }
+        motivoRequerimento3: { type: string }
+        motivoRequerimento4: { type: string }
+        dataPrimeiraHabilitacao: { type: string, format: date-time }
+        ufPrimeiraHabilitacao: { type: string }
+        categoriaAtual: { type: string }
+        categoriaRebaixada: { type: string }
+        categoriaAutorizada: { type: string }
+        dataValidadeCnh: { type: string, format: date-time }
+        ufHabilitacaoAtual: { type: string }
+        quadroObservacoesCnh: { type: string }
+        ufSolicitanteTransferencia: { type: string }
+        situacaoCnh: { type: string }
+        situacaoCnhAnterior: { type: string }
+        permissionario: { type: integer }
+        cancelamento: { type: string }
+        dataUltimaEmissaoHistorico: { type: string, format: date-time }
+        codigoTransacaoUltimaAtualizacao: { type: integer }
+        dataTransacaoUltimaAtualizacao: { type: string, format: date-time }
+        classificacaoCursoTpp: { type: string }
+        ufCursoTpp: { type: string }
+        dataCursoTpp: { type: string, format: date-time }
+        classificacaoCursoTe: { type: string }
+        ufCursoTe: { type: string }
+        dataCursoTe: { type: string, format: date-time }
+        classificacaoCursoTcp: { type: string }
+        ufCursoTcp: { type: string }
+        dataCursoTcp: { type: string, format: date-time }
+        classificacaoCursoTve: { type: string }
+        ufCursoTve: { type: string }
+        dataCursoTve: { type: string, format: date-time }
+        classificacaoCursoTci: { type: string }
+        ufCursoTci: { type: string }
+        dataCursoTci: { type: string, format: date-time }
+        classificacaoCursoTmt: { type: string }
+        ufCursoTmt: { type: string }
+        dataCursoTmt: { type: string, format: date-time }
+        classificacaoCursoTmf: { type: string }
+        ufCursoTmf: { type: string }
+        dataCursoTmf: { type: string, format: date-time }
+        ufCursoReciclagemInfrator: { type: string }
+        dataCursoReciclagemInfrator: { type: string, format: date-time }
+        modalidadeCursoReciclagemInfrator: { type: string }
+        ufCursoAtualizacaoRenovacaoCnh: { type: string }
+        dataCursoAtualizacaoRenovacaoCnh: { type: string, format: date-time }
+        modalidadeCursoAtualizacaoRenovacaoCnh: { type: string }
+        registroNacionalEstrangeiro: { type: string }
+        paisOrigemHabilitacaoEstrangeira: { type: string }
+        descricaoPaisOrigemHabilitacaoEstrangeira: { type: string }
+        identificacaoHabilitacaoEstrangeira: { type: string }
+        dataValidadeHabilitacaoEstrangeira: { type: string, format: date-time }
+        numeroFormularioPid: { type: string }
+        dataValidadePid: { type: string, format: date-time }
+        ufExpedicaoPid: { type: string }
+        numeroFormularioCnhBasePid: { type: string }
+        motivoRequerimentoPid1: { type: string }
+        motivoRequerimentoPid2: { type: string }
+        motivoRequerimentoPid3: { type: string }
+        motivoRequerimentoPid4: { type: string }
+        situacaoPid: { type: string }
+        restricoesMedicas: { type: string }
+        quantidadeOcorrenciasImpedimentos: { type: integer }
+        ocorrencias:
+          type: array
+          items:
+            $ref: '#/components/schemas/CondutorOcorrencia'
+        descricaoSexo: { type: string }
+        descricaoDocumento: { type: string }
+        descricaoSituacaoCnh: { type: string }
+        descricaoMotivoRequerimento1: { type: string }
+        descricaoMotivoRequerimento2: { type: string }
+        descricaoMotivoRequerimento3: { type: string }
+        descricaoMotivoRequerimento4: { type: string }
+        descricaoMotivoRequerimentoPid1: { type: string }
+        descricaoMotivoRequerimentoPid2: { type: string }
+        descricaoMotivoRequerimentoPid3: { type: string }
+        descricaoMotivoRequerimentoPid4: { type: string }
+        descricaoSituacaoCnhAnterior: { type: string }
+        descricaoNacionalidade: { type: string }
+        descricaoClassificacaoCursoTve: { type: string }
+        descricaoClassificacaoCursoTpp: { type: string }
+        descricaoClassificacaoCursoTmt: { type: string }
+        descricaoClassificacaoCursoTmf: { type: string }
+        descricaoClassificacaoCursoTcp: { type: string }
+        descricaoClassificacaoCursoTci: { type: string }
+        descricaoClassificacaoCursoTe: { type: string }
+        descricaoModalidadeCursoAtualizacaoRenovacaoCnh: { type: string }
+        descricaoModalidadeCursoReciclagemInfrator: { type: string }
+
+    CondutorListResponse:
+      type: object
+      properties:
+        condutores:
+          type: array
+          items:
+            $ref: '#/components/schemas/Condutor'
+
+    CondutorImagemDigital:
+      type: object
+      properties:
+        motivoAusencia: { type: integer }
+        imagem:
+          type: array
+          items: { type: string }
+
+    CondutorImagem:
+      type: object
+      properties:
+        mapeamentoAutomatico: { type: boolean }
+        nomeMae: { type: string }
+        dataEmissao: { type: string, format: date-time }
+        nomeCondutor: { type: string }
+        numeroRegistro: { type: string }
+        numeroFormularioCnh: { type: string }
+        dataValidade: { type: string, format: date-time }
+        categoria: { type: string }
+        numeroSeguranca: { type: string }
+        numeroFormularioRenach: { type: string }
+        dataNascimento: { type: string, format: date-time }
+        codigoNacionalidade: { type: string }
+        descricaoNacionalidade: { type: string }
+        nomePai: { type: string }
+        enderecoLogradouro: { type: string }
+        enderecoNumero: { type: string }
+        enderecoComplemento: { type: string }
+        enderecoBairro: { type: string }
+        enderecoCep: { type: string }
+        enderecoCodigoMunicipio: { type: string }
+        enderecoDescricaoMunicipio: { type: string }
+        enderecoUf: { type: string }
+        dataPrimeiraHabilitacao: { type: string, format: date-time }
+        ufPrimeiraHabilitacao: { type: string }
+        ufHabilitacaoAtual: { type: string }
+        ufDominio: { type: string }
+        indicadorInfracoesNoUltimoAno: { type: boolean }
+        retrato:
+          type: array
+          items: { type: string }
+        assinatura:
+          type: array
+          items: { type: string }
+        polegarDireito: { $ref: '#/components/schemas/CondutorImagemDigital' }
+        indicadorDireito: { $ref: '#/components/schemas/CondutorImagemDigital' }
+        medioDireito: { $ref: '#/components/schemas/CondutorImagemDigital' }
+        anelarDireito: { $ref: '#/components/schemas/CondutorImagemDigital' }
+        minimoDireito: { $ref: '#/components/schemas/CondutorImagemDigital' }
+        polegarEsquerdo: { $ref: '#/components/schemas/CondutorImagemDigital' }
+        indicadorEsquerdo: { $ref: '#/components/schemas/CondutorImagemDigital' }
+        medioEsquerdo: { $ref: '#/components/schemas/CondutorImagemDigital' }
+        anelarEsquerdo: { $ref: '#/components/schemas/CondutorImagemDigital' }
+        minimoEsquerdo: { $ref: '#/components/schemas/CondutorImagemDigital' }
+        situacao: { type: string }
+
+    CondutorInfracaoExtratoItem:
+      type: object
+      properties:
+        mapeamentoAutomatico: { type: boolean }
+        codigoInfracao: { type: integer }
+        descricaoAutoInfracao: { type: string }
+        quantidadeInfracao: { type: integer }
+        gravidadeInfracao: { type: integer }
+        descricaoGravidadeInfracao: { type: string }
+        quantidadeAdvertenciasPorEscrito: { type: integer }
+
+    CondutorInfracaoExtrato:
+      type: object
+      properties:
+        quantidade: { type: integer }
+        quantidadeReal: { type: integer }
+        ocorrencias:
+          type: array
+          items:
+            $ref: '#/components/schemas/CondutorInfracaoExtratoItem'
+
+    Infracao:
+      type: object
+      properties:
+        mapeamentoAutomatico: { type: boolean }
+        codigoInfracao: { type: string }
+        codigoDesdobramentoInfracao: { type: string }
+        descricaoInfracao: { type: string }
+        codigoRenainf: { type: string }
+        dataCadastroInfracao: { type: string, format: date-time }
+        ufOrgaoAutuador: { type: string }
+        placa: { type: string }
+        codigoRenavam: { type: string }
+        codigoMarcaModelo: { type: string }
+        descricaoMarcaModelo: { type: string }
+        codigoTipoVeiculo: { type: integer }
+        descricaoTipoVeiculo: { type: string }
+        codigoCorVeiculo: { type: integer }
+        descricaoCorVeiculo: { type: string }
+        codigoEspecieVeiculo: { type: integer }
+        descricaoEspecieVeiculo: { type: string }
+        codigoCarroceriaVeiculo: { type: integer }
+        descricaoCarroceriaVeiculo: { type: string }
+        codigoCategoriaVeiculo: { type: integer }
+        descricaoCategoriaVeiculo: { type: string }
+        getufJurisdicaoVeiculo: { type: string }
+        getufEmplacamentoInformada: { type: string }
+        codigoMunicipioEmplacamento: { type: integer }
+        descricaoMunicipioEmplacamento: { type: string }
+        codigoPaisVeiculo: { type: integer }
+        descricaoPaisVeiculo: { type: string }
+        codigoRestricao1: { type: integer }
+        descricaoRestricao1: { type: string }
+        codigoRestricao2: { type: integer }
+        descricaoRestricao2: { type: string }
+        codigoRestricao3: { type: integer }
+        descricaoRestricao3: { type: string }
+        codigoRestricao4: { type: integer }
+        descricaoRestricao4: { type: string }
+        indicadorRestricaoRenajud: { type: boolean }
+        indicadorRestricaoRenavam: { type: boolean }
+        indicadorRouboFurtoRenavam: { type: boolean }
+        codigoOrgaoAutuador: { type: string }
+        descricaoOrgaoAutuador: { type: string }
+        numeroAutoInfracao: { type: string }
+        indicadorAssinaturaAuto: { type: integer }
+        descricaoAssinaturaAuto: { type: string }
+        modeloCnhCondutor: { type: integer }
+        descricaoModeloCnhCondutor: { type: string }
+        numeroRegistroCnhCondutor: { type: string }
+        ufExpedicaoCnhCondutor: { type: string }
+        dataInfracao: { type: string, format: date-time }
+        horaInfracao: { type: string }
+        localOcorrenciaInfracao: { type: string }
+        codigoMunicipioInfracao: { type: string }
+        descricaoMunicipioInfracao: { type: string }
+        tipoAuto: { type: integer }
+        descricaoTipoAuto: { type: string }
+        numeroDocumentoCondutorNaoHabilitado: { type: string }
+        tipoDocumentoCondutorNaoHabilitado: { type: integer }
+        descricaoTipoDocumentoCondutorNaoHabilitado: { type: string }
+        medicaoReal: { type: integer }
+        limitePermitido: { type: integer }
+        medicaoConsiderada: { type: integer }
+        unidadeMedida: { type: integer }
+        descricaoUnidadeMedida: { type: string }
+        valorIntegralInfracao: { type: integer }
+        origemPossuidorVeiculo: { type: integer }
+        descricaoOrigemPossuidorVeiculo: { type: string }
+        tipoDocumentoPossuidor: { type: integer }
+        descricaoTipoDocumentoPossuidor: { type: string }
+        numeroIdentificacaoPossuidor: { type: string }
+        nomePossuidor: { type: string }
+        dataEmissaoNotificacaoAutuacao: { type: string, format: date-time }
+        dataLimiteDefesaAutuacao: { type: string, format: date-time }
+        dataAceiteUfJurisdicaoAutuacao: { type: string, format: date-time }
+        indicadorNotificacaoEditalAutuacao: { type: boolean }
+        dataNotificacaoEditalAutuacao: { type: string, format: date-time }
+        numeroNotificacaoPenalidade: { type: string }
+        dataEmissaoNotificacaoPenalidade: { type: string, format: date-time }
+        dataVencimentoNotificacaoPenalidade: { type: string, format: date-time }
+        indicadorNotificacaoEditalPenalidade: { type: boolean }
+        dataNotificacaoEditalPenalidade: { type: string, format: date-time }
+        dataAceiteUfJurisdicaoPenalidade: { type: string, format: date-time }
+        tipoPenalidade: { type: integer }
+        descricaoPenalidade: { type: string }
+        nomeRealInfrator: { type: string }
+        modeloCnhRealInfrator: { type: integer }
+        descricaoModeloCnhRealInfrator: { type: string }
+        numeroRegistroCnhRealInfrator: { type: string }
+        ufExpedicaoCnhRealCondutor: { type: string }
+        dataApresentacao: { type: string, format: date-time }
+        indicadorStatusAnalisePontuacao: { type: string }
+        descricaoStatusAnalisePontuacao: { type: string }
+        codigoModeloCnhPontuada: { type: integer }
+        descricaoModeloCnhPontuada: { type: string }
+        numeroRegistroCnhPontuada: { type: string }
+        ufExpedicaoCnhPontuada: { type: string }
+        dataInclusaoExclusaoLote: { type: string, format: date-time }
+        ufOrigemDesvinculacao: { type: string }
+        indicadorMotivoDesvinculacao: { type: integer }
+        descricaoMotivoDesvinculacao: { type: string }
+        dataSolicitacaoDesvinculacao: { type: string, format: date-time }
+        dataAceiteUfRelacionada: { type: string, format: date-time }
+        indicadorExigibilidade: { type: integer }
+        descricaoIndicadorExigibilidade: { type: string }
+        ufPagamento: { type: string }
+        dataPagamentoInfracao: { type: string, format: date-time }
+        valorPagoInfracao: { type: integer }
+        dataRegistroPagamento: { type: string, format: date-time }
+        quantidadePagamentos: { type: integer }
+        tipoOcorrencia: { type: integer }
+        descricaoTipoOcorrencia: { type: string }
+        origemOcorrencia: { type: integer }
+        descricaoOrigemOcorrencia: { type: string }
+        numeroProcesso: { type: string }
+        dataOcorrencia: { type: string, format: date-time }
+        dataRegistroOcorrencia: { type: string, format: date-time }
+
+    InfracaoListResponse:
+      type: object
+      properties:
+        quantidadeInfracoes: { type: integer }
+        quantidadeInfracoesReal: { type: integer }
+        idUltimoRegistro: { type: integer, format: int64 }
+        infracoes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Infracao'
+
+    InfracaoOcorrencia:
+      type: object
+      properties:
+        mapeamentoAutomatico: { type: boolean }
+        ufOcorrencia: { type: string }
+        tipoOcorrencia: { type: integer }
+        descricaoTipoOcorrencia: { type: string }
+        origemOcorrencia: { type: string }
+        descricaoOrigemOcorrencia: { type: string }
+        dataOcorrencia: { type: string, format: date-time }
+        numeroProcesso: { type: string }
+        dataRegistroOcorrencia: { type: string, format: date-time }
+        dataAceiteUfRelacionada: { type: string, format: date-time }
+        indicadorRegistroCancelamento: { type: integer }
+        descricaoIndicadorRegistroCancelamento: { type: string }
+        dataCancelamentoRegistro: { type: string, format: date-time }
+        dataAceiteUfRelacionada2: { type: string, format: date-time }
+        indicadorRegistroReativacao: { type: integer }
+        descricaoIndicadorRegistroReativacao: { type: string }
+        dataRegistroReativacao: { type: string, format: date-time }
+        dataAceiteUfJurisdicao: { type: string, format: date-time }
+
+    InfracaoOcorrenciaResponse:
+      type: object
+      properties:
+        quantidade: { type: integer }
+        quantidadeReal: { type: integer }
+        ocorrencias:
+          type: array
+          items:
+            $ref: '#/components/schemas/InfracaoOcorrencia'
+
+    InfracaoPagamento:
+      type: object
+      properties:
+        mapeamentoAutomatico: { type: boolean }
+        ufPagamento: { type: string }
+        numeroDocumentoArrecadacao: { type: string }
+        dataPagamentoInfracao: { type: string, format: date-time }
+        valorPago: { type: integer }
+        codigoBanco: { type: integer }
+        codigoAgencia: { type: string }
+        numeroTerminal: { type: integer }
+        numeroAutenticacao: { type: integer }
+        dataCredito: { type: string, format: date-time }
+        valorRepasse: { type: integer }
+        dataRegistroPagamento: { type: string, format: date-time }
+        dataLancamentoPagamento: { type: string, format: date-time }
+        indicadorRegistroCancelamento: { type: integer }
+        descricaoIndicadorRegistroCancelamento: { type: string }
+        dataCancelamentoPagamento: { type: string, format: date-time }
+        dataCancelamentoAceitePagamento: { type: string, format: date-time }
+
+    InfracaoPagamentoResponse:
+      type: object
+      properties:
+        quantidade: { type: integer }
+        quantidadeReal: { type: integer }
+        pagamentos:
+          type: array
+          items:
+            $ref: '#/components/schemas/InfracaoPagamento'
+
+    IndicadorRestricaoJudicial:
+      type: object
+      properties:
+        indicadorTransferencia: { type: boolean }
+        indicadorLicenciamento: { type: boolean }
+        indicadorCirculacao: { type: boolean }
+        indicadorPenhora: { type: boolean }
+
+    IndicadorSinistro:
+      type: object
+      properties:
+        indicadorMediaMonta: { type: boolean }
+        indicadorGrandeMonta: { type: boolean }
+        indicadorRecuperado: { type: boolean }
+
+    RestricaoJudicialItem:
+      type: object
+      properties:
+        mapeamentoAutomatico: { type: boolean }
+        codigoTipoRestricao: { type: string }
+        descricaoRestricao: { type: string }
+        dataInclusaoRestricao: { type: string, format: date-time }
+        horaInclusaoRestricao: { type: string }
+
+    RestricaoJudicialProcesso:
+      type: object
+      properties:
+        mapeamentoAutomatico: { type: boolean }
+        codigoTribunal: { type: string }
+        nomeTribunal: { type: string }
+        codigoOrgaoJudicial: { type: string }
+        nomeOrgaoJudicial: { type: string }
+        numeroProcesso: { type: string }
+        enderecoLogradouro: { type: string }
+        enderecoNumero: { type: string }
+        enderecoComplemento: { type: string }
+        enderecoBairrro: { type: string }
+        enderecoMunicipio: { type: string }
+        descricaoEnderecoMunicipio: { type: string }
+        enderecoUf: { type: string }
+        enderecoCep: { type: string }
+        dddTelefone1: { type: string }
+        telefone1: { type: string }
+        dddTelefone2: { type: string }
+        telefone2: { type: string }
+        quantidadeRestricoesAtiva: { type: integer }
+        quantidadeRestricoesAtivas: { type: integer }
+        restricoesJudiciais:
+          type: array
+          items:
+            $ref: '#/components/schemas/RestricaoJudicialItem'
+
+    RestricaoJudicialResponse:
+      type: object
+      properties:
+        quantidadeRetornada: { type: integer }
+        quantidadeReal: { type: integer }
+        idUltimoRegistro: { type: integer, format: int64 }
+        processos:
+          type: array
+          items:
+            $ref: '#/components/schemas/RestricaoJudicialProcesso'
+
+    RouboFurtoOcorrencia:
+      type: object
+      properties:
+        mapeamentoAutomatico: { type: boolean }
+        chassi: { type: string }
+        placa: { type: string }
+        ufJurisdicao: { type: string }
+        municipioEmplacamento: { type: string }
+        marcaModelo: { type: string }
+        cor: { type: string }
+        anoModelo: { type: integer }
+        anoFabricacao: { type: integer }
+        codigoCategoriaOcorrencia: { type: string }
+        descricaoCategoriaOcorrencia: { type: string }
+        ufboletimOcorrencia: { type: string }
+        codigoorgaoSeguranca: { type: string }
+        descricaoorgaoSeguranca: { type: string }
+        numeroboletimOcorrencia: { type: string }
+        anoboletimOcorrencia: { type: integer }
+        codigomunicipioOcorrencia: { type: string }
+        descricaomunicipioOcorrencia: { type: string }
+        tipoDeclaracao: { type: string }
+        descricaoTipoDeclaracao: { type: string }
+        dataOcorrencia: { type: string, format: date-time }
+        tipoDocumentoInformante: { type: string }
+        descricaoTipoDocumentoInformante: { type: string }
+        numeroIdentificacaoInformante: { type: string }
+        dddTelefoneContato: { type: string }
+        numeroTelefoneContato: { type: string }
+        ramalTelefoneContato: { type: string }
+        nomeInformante: { type: string }
+        numeroCentralAlarme: { type: integer }
+        dataRegistroAlarme: { type: string, format: date-time }
+        horaRegistroAlarme: { type: string }
+
+    RouboFurtoResponse:
+      type: object
+      properties:
+        quantidadeRetornada: { type: integer }
+        quantidadeReal: { type: integer }
+        idUltimoRegistro: { type: integer, format: int64 }
+        ocorrenciasRouboFurto:
+          type: array
+          items:
+            $ref: '#/components/schemas/RouboFurtoOcorrencia'
+
+    Veiculo:
+      type: object
+      properties:
+        mapeamentoAutomatico: { type: boolean }
+        chassi: { type: string }
+        placa: { type: string }
+        codigoRenavam: { type: string }
+        situacao: { type: string }
+        codigoMunicipioEmplacamento: { type: string }
+        descricaoMunicipioEmplacamento: { type: string }
+        ufJurisdicao: { type: string }
+        codigoRemarcacaoChassi: { type: string }
+        descricaoRemarcacaoChassi: { type: string }
+        codigoTipoVeiculo: { type: string }
+        descricaoTipoVeiculo: { type: string }
+        codigoMarcaModelo: { type: string }
+        descricaoMarcaModelo: { type: string }
+        codigoEspecieVeiculo: { type: string }
+        descricaoEspecieVeiculo: { type: string }
+        codigoTipoCarroceria: { type: string }
+        descricaoTipoCarroceria: { type: string }
+        codigoCor: { type: string }
+        descricaoCor: { type: string }
+        codigoCategoria: { type: string }
+        descricaoCategoria: { type: string }
+        anoModelo: { type: integer }
+        anoFabricacao: { type: integer }
+        potencia: { type: integer }
+        cilindradas: { type: integer }
+        codigoCombustivel: { type: string }
+        descricaoCombustivel: { type: string }
+        numeroMotor: { type: string }
+        cmt: { type: integer }
+        pbt: { type: integer }
+        cmc: { type: integer }
+        procedencia: { type: string }
+        numeroCambio: { type: string }
+        codigoTipoProprietario: { type: string }
+        descricaoTipoProprietario: { type: string }
+        numeroIdentificacaoProprietario: { type: string }
+        numeroCarroceria: { type: string }
+        codigoRestricao1: { type: string }
+        descricaoRestricao1: { type: string }
+        codigoRestricao2: { type: string }
+        descricaoRestricao2: { type: string }
+        codigoRestricao3: { type: string }
+        descricaoRestricao3: { type: string }
+        codigoRestricao4: { type: string }
+        descricaoRestricao4: { type: string }
+        qtdEixos: { type: integer }
+        numeroEixoTraseiro: { type: string }
+        numeroEixoAuxiliar: { type: string }
+        nomeProprietario: { type: string }
+        lotacao: { type: integer }
+        dataEmissaoCrv: { type: string, format: date-time }
+        naturezaImportacao: { type: string }
+        descricaoDocImportador: { type: string }
+        numeroIdImportador: { type: string }
+        codigoOrgaoRfb: { type: string }
+        descricaoOrgaoRfb: { type: string }
+        registroAduaneiro: { type: string }
+        numeroDeclaracaoImportacao: { type: string }
+        dataDistImportacao: { type: string, format: date-time }
+        naturezaFaturamento: { type: string }
+        tipoDocFaturado: { type: string }
+        numeroIdFaturamento: { type: string }
+        ufFaturado: { type: string }
+        dataLimite: { type: string, format: date-time }
+        dataUltimaAtualizacaoImportacao: { type: string, format: date-time }
+        codigoTipoImportacao: { type: string }
+        descricaoTipoImportacao: { type: string }
+        numeroProcessoImportacao: { type: string }
+        dataBaixaImportacao: { type: string, format: date-time }
+        codigoPaisTransferencia: { type: string }
+        descricaoPaisTransferencia: { type: string }
+        indicadorMultaRenainf: { type: boolean }
+        indicadorComunicacaoVenda: { type: boolean }
+        indicadorPendenciaEmissao: { type: boolean }
+        indicadorRestricaoRenajud: { type: boolean }
+        indicadorRecall1: { type: boolean }
+        indicadorRecall2: { type: boolean }
+        indicadorRecall3: { type: boolean }
+        indicadorRecall4: { type: boolean }
+        tipoDocProprietarioIndicado: { type: string }
+        descricaoDocProprietarioIndicado: { type: string }
+        numeroDocProprietarioIndicado: { type: string }
+        dataAtualizacaoMre: { type: string, format: date-time }
+        indicadorSiniav: { type: boolean }
+        codigoOrigemPropriedade: { type: string }
+        indicadorRestricaoRfb: { type: string }
+        descricaoRestricaoRfb: { type: string }
+        indicadorLeilao: { type: boolean }
+        indicadorRouboFurto: { type: boolean }
+        indicadorAlarme: { type: boolean }
+        codigoTipoArrendatario: { type: string }
+        descricaoTipoArrendatario: { type: string }
+        numeroIdentificacaoArrendatario: { type: string }
+        nomeArrendatario: { type: string }
+
+    VeiculoListResponse:
+      type: object
+      properties:
+        quantidadeVeiculo: { type: integer }
+        quantidadeVeiculoReal: { type: integer }
+        idUltimoRegistro: { type: integer, format: int64 }
+        veiculo:
+          type: array
+          items:
+            $ref: '#/components/schemas/Veiculo'
+
+    CodigoSegurancaCrv:
+      type: object
+      properties:
+        mapeamentoAutomatico: { type: boolean }
+        numeroSegurancaCrv: { type: integer }
+        viaDocumento: { type: string }
+        codigoRenavam: { type: string }
+        nomeProprietario: { type: string }
+        codigoTipoProprietario: { type: string }
+        descricaoTipoProprietario: { type: string }
+        numeroIdentificacaoProprietario: { type: string }
+        placa: { type: string }
+        chassi: { type: string }
+        codigoEspecieVeiculo: { type: string }
+        descricaoEspecieVeiculo: { type: string }
+        codigoTipoVeiculo: { type: string }
+        descricaoTipoVeiculo: { type: string }
+        codigoCombustivel: { type: string }
+        descricaoCombustivel: { type: string }
+        codigoMarcaModelo: { type: string }
+        descricaoMarcaModelo: { type: string }
+        anoFabricacao: { type: integer }
+        anoModelo: { type: integer }
+        codigoCor: { type: string }
+        descricaoCor: { type: string }
+        ufExpedidora: { type: string }
+        codigoMunicipio: { type: string }
+        descricaoMunicipio: { type: string }
+        dataEmissaoCrv: { type: string, format: date-time }
+        codigoRestricao1: { type: string }
+        descricaoRestricao1: { type: string }
+        codigoRestricao2: { type: string }
+        descricaoRestricao2: { type: string }
+        codigoRestricao3: { type: string }
+        descricaoRestricao3: { type: string }
+        codigoRestricao4: { type: string }
+        descricaoRestricao4: { type: string }
+        indicadorComunicacaoVenda: { type: boolean }
+        indicadorRestricaoRenajud: { type: boolean }
+        indicadorInfracaoInterestadual: { type: boolean }
+        indicadorRouboFurto: { type: boolean }
+        indicadorAlarme: { type: boolean }
+
+    ComunicacaoVenda:
+      type: object
+      properties:
+        mapeamentoAutomatico: { type: boolean }
+        placa: { type: string }
+        renavam: { type: string }
+        numeroIdentificacaoProprietario: { type: string }
+        dataVenda: { type: string, format: date-time }
+        dataRegistroVenda: { type: string, format: date-time }
+        tipoIdentificacaoComprador: { type: string }
+        numeroIdentificacaoComprador: { type: string }
+        nomeComprador: { type: string }
+
+    EnderecoPossuidor:
+      type: object
+      properties:
+        mapeamentoAutomatico: { type: boolean }
+        origemPossuidor: { type: string }
+        descricaoOrigemPossuidor: { type: string }
+        tipoDocumentoPossuidor: { type: string }
+        descricaoDocumentoPosssuidor: { type: string }
+        numeroDocumentoPossuidor: { type: string }
+        nomePossuidor: { type: string }
+        enderecoLogradouro: { type: string }
+        enderecoNumero: { type: string }
+        enderecoComplemento: { type: string }
+        enderecoBairrro: { type: string }
+        enderecoMunicipio: { type: string }
+        descricaoEnderecoMunicipio: { type: string }
+        enderecoUf: { type: string }
+        enderecoCep: { type: string }
+
+    MultaInterestadual:
+      type: object
+      properties:
+        mapeamentoAutomatico: { type: boolean }
+        placa: { type: string }
+        renavam: { type: string }
+        numeroIdentificacaoProprietario: { type: string }
+        codigoOrgaoAutuador: { type: string }
+        descricaoOrgaoAutuador: { type: string }
+        numeroAutoInfracao: { type: string }
+        codigoInfracao: { type: string }
+        codigoDesdobramentoInfracao: { type: string }
+        descricaoInfracao: { type: string }
+        dataInfracao: { type: string, format: date-time }
+        horaInfracao: { type: string }
+        localOcorrenciaInfracao: { type: string }
+        codigoRenainf: { type: string }
+        valorMulta: { type: integer }
+        dataVencimento: { type: string, format: date-time }
+
+    MultaInterestadualResponse:
+      type: object
+      properties:
+        quantidade: { type: integer }
+        quantidadeReal: { type: integer }
+        multas:
+          type: array
+          items:
+            $ref: '#/components/schemas/MultaInterestadual'
+
+    Recall:
+      type: object
+      properties:
+        mapeamentoAutomatico: { type: boolean }
+        nome: { type: string }
+        descricao: { type: string }
+        dataRegistro: { type: string, format: date-time }
+
+    RecallResponse:
+      type: object
+      properties:
+        quantidade: { type: integer }
+        quantidadeReal: { type: integer }
+        recalls:
+          type: array
+          items:
+            $ref: '#/components/schemas/Recall'
+
+    ConsultaCsv:
+      type: object
+      properties:
+        numeroCertificado: { type: string }
+        indicadorCSVLegado: { type: integer }
+        indicadorStatusCSVLegado: { type: string }
+        indicadorAutorizado: { type: string }
+        dataHoraRecepcao: { type: string }
+        nomeTipoCSV: { type: string }
+        indicadorAprovadoCSV: { type: string }
+        registroCSV: { type: string }
+        inspecaoCSV: { type: string }
+        validadeCSV: { type: string }
+        indicadorCancelamentoSISCSV: { type: integer }
+        dataHoraCancelamentoSISCV: { type: string }
+        motivoCancelamento: { type: string }
+        descricaoMotivoCancelamento: { type: string }
+        dataHoraCancelamentoRenavam: { type: string }
+        identificacaoUnicaRenavam: { type: string }
+        chassi: { type: string }
+        placa: { type: string }
+        ufJurisdicao: { type: string }
+        codigoRenavam: { type: string }
+        chassiOrigem: { type: string }
+        placaOrigem: { type: string }
+        numeroSeqDocCRVOrigem: { type: string }
+        chassiCSV: { type: string }
+        codigoMarcaModeloCSV: { type: string }
+        codigoTipoVeiculoCSV: { type: string }
+        codigoTipoCarroceriaCSV: { type: string }
+        potenciaCSV: { type: integer }
+        cilindradasCSV: { type: integer }
+        lotacaoCSV: { type: integer }
+        codigoCombustivel: { type: string }
+        codigoCorVeiculoCSV: { type: string }
+        pbtCSV: { type: integer }
+        cmcCSV: { type: integer }
+        cmtCSV: { type: integer }
+        numeroIdentificacaoProprietarioCSV: { type: string }
+        codigoMunicipioProprietarioCSV: { type: string }
+        ufMunicipioProprietarioCSV: { type: string }
+        numeroSequencialCRVAlteracao: { type: string }
+        dataHoraRegistroCRV: { type: string }
+        indicadorUtilizadorRENAVAM: { type: integer }
+        numeroEscopo1: { type: string }
+        numeroEscopo2: { type: string }
+        numeroEscopo3: { type: string }
+        numeroEscopo4: { type: string }
+        numeroEscopo5: { type: string }
+        numeroEscopo6: { type: string }
+        numeroEscopo7: { type: string }
+        numeroEscopo8: { type: string }
+        numeroEscopo9: { type: string }
+        numeroEscopo10: { type: string }
+        numeroAutorizacao1: { type: string }
+        numeroAutorizacao2: { type: string }
+        numeroAutorizacao3: { type: string }
+        numeroAutorizacao4: { type: string }
+        numeroAutorizacao5: { type: string }
+        numeroAutorizacao6: { type: string }
+        numeroAutorizacao7: { type: string }
+        numeroAutorizacao8: { type: string }
+        numeroAutorizacao9: { type: string }
+        numeroAutorizacao10: { type: string }
+
+    ConsultaCsvList:
+      type: array
+      items:
+        $ref: '#/components/schemas/ConsultaCsv'
