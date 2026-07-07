@@ -7,12 +7,9 @@ import { createE2eApp, AUTH, type TestApp } from '../utils/e2e-app.js';
  * suite is repeatable without depending on mutable seed rows. Each run mints a
  * unique AIT number.
  *
- * NOTE ON IDEMPOTENCY: the transactional writes are idempotent by natural key
- * (numeroAit / idProcesso). Replaying a write with the SAME natural key (no
- * Idempotency-Key) returns the ORIGINAL result — it does not re-run the business
- * rule. So the "second call must fail with a business error" cases below supply a
- * DISTINCT `Idempotency-Key` on the second call, which is the only path that
- * reaches the state-machine guard.
+ * Idempotency is keyed by an explicit `Idempotency-Key` only: a replay WITHOUT a
+ * key re-runs the write, so duplicate/already-done business rules fire on a plain
+ * replay. The "second call → business error" cases below therefore send no key.
  */
 let ctx: TestApp;
 beforeAll(async () => {
@@ -32,62 +29,73 @@ const post = (path: string, body: unknown, idemKey?: string) => {
 };
 const get = (path: string) => request(ctx.server).get(path).set(AUTH);
 
+const validAit = (numeroAit: string) => ({
+  numeroAit,
+  codigoOrgaoAutuador: '204020',
+  agenteAutuador: { cpf: '52998224725', matricula: 'AGT1' },
+  infracao: {
+    codigoInfracao: '74550',
+    dataInfracao: '2026-01-01T10:00:00Z',
+    codigoMunicipio: '3550308',
+    local: {
+      descricao: 'Av. Exemplo, 1000',
+      latitude: -23.55,
+      longitude: -46.63,
+    },
+  },
+  veiculo: { placa: 'ABC1D23' },
+});
+const validDefesa = (tipoRequerente = 'PROPRIETARIO') => ({
+  requerente: { tipoRequerente, numeroDocumento: '52998224725' },
+  fundamentacao: 'Defesa prévia de teste.',
+  dataProtocolo: '2026-02-01T12:00:00Z',
+});
+const validRecurso = (instancia: string) => ({
+  instancia,
+  requerente: {
+    tipoRequerente: 'PROPRIETARIO',
+    numeroDocumento: '52998224725',
+  },
+  fundamentacao: 'Recurso de teste.',
+});
+
 describe('renainf lifecycle (INV-RENAINF-001)', () => {
   const AIT = 'T' + Date.now().toString().slice(-7);
   let idProcesso = '';
   let idRecurso = '';
 
   it('POST autosInfracao → 201 VALIDADO', async () => {
+    const res = await post('/v1/renainf/autosInfracao', validAit(AIT));
+    expect(res.status).toBe(201);
+    expect(res.body.situacao).toBe('VALIDADO');
+  });
+
+  it('plain duplicate numeroAit (no key) → 402 RENAINF.AIT.DUPLICATED', async () => {
+    const res = await post('/v1/renainf/autosInfracao', validAit(AIT));
+    expect(res.status).toBe(402);
+    expect(res.body.message).toContain('RENAINF.AIT.DUPLICATED');
+  });
+
+  it('missing numeroAit → 400', async () => {
     const res = await post('/v1/renainf/autosInfracao', {
-      numeroAit: AIT,
       codigoOrgaoAutuador: '204020',
-      agenteAutuador: { cpf: '52998224725', matricula: 'AGT1' },
+      infracao: { codigoInfracao: '74550' },
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('incomplete infracao (no municipio/local) → 400', async () => {
+    const res = await post('/v1/renainf/autosInfracao', {
+      numeroAit: `${AIT}9`,
+      codigoOrgaoAutuador: '204020',
+      agenteAutuador: { cpf: '1', matricula: 'A' },
       infracao: {
         codigoInfracao: '74550',
         dataInfracao: '2026-01-01T10:00:00Z',
       },
       veiculo: { placa: 'ABC1D23' },
     });
-    expect(res.status).toBe(201);
-    expect(res.body.situacao).toBe('VALIDADO');
-  });
-
-  it('duplicate numeroAit → 402 RENAINF.AIT.DUPLICATED', async () => {
-    // Distinct Idempotency-Key so the duplicate is re-evaluated (not replayed).
-    const res = await post(
-      '/v1/renainf/autosInfracao',
-      {
-        numeroAit: AIT,
-        codigoOrgaoAutuador: '204020',
-        agenteAutuador: { cpf: '52998224725', matricula: 'AGT1' },
-        infracao: {
-          codigoInfracao: '74550',
-          dataInfracao: '2026-01-01T10:00:00Z',
-        },
-        veiculo: { placa: 'ABC1D23' },
-      },
-      `dup-${AIT}`,
-    );
-    expect(res.status).toBe(402);
-    expect(res.body.message).toContain('RENAINF.AIT.DUPLICATED');
-  });
-
-  it('missing numeroAit → 400 RENAINF.AIT.INVALID_NUMBER', async () => {
-    const res = await post('/v1/renainf/autosInfracao', {
-      codigoOrgaoAutuador: '204020',
-      infracao: { codigoInfracao: '74550' },
-    });
     expect(res.status).toBe(400);
-    expect(res.body.message).toContain('RENAINF.AIT.INVALID_NUMBER');
-  });
-
-  it('missing infraction code → 400 RENAINF.AIT.INVALID_INFRACTION_CODE', async () => {
-    const res = await post('/v1/renainf/autosInfracao', {
-      numeroAit: `${AIT}9`,
-      codigoOrgaoAutuador: '204020',
-    });
-    expect(res.status).toBe(400);
-    expect(res.body.message).toContain('RENAINF.AIT.INVALID_INFRACTION_CODE');
   });
 
   it('POST processosAdministrativos → 201 (capture idProcesso)', async () => {
@@ -117,22 +125,18 @@ describe('renainf lifecycle (INV-RENAINF-001)', () => {
     expect(res.body.situacao).toBe('AGUARDANDO_DEFESA_PREVIA');
   });
 
-  it('defesa with invalid actor → 402 RENAINF.DEFENSE.INVALID_ACTOR', async () => {
+  it('defesa with an invalid actor enum → 400 (DTO validation)', async () => {
     const res = await post(
       `/v1/renainf/processosAdministrativos/${idProcesso}/defesasPrevias`,
-      { requerente: { tipoRequerente: 'BOGUS', numeroDocumento: 'x' } },
+      validDefesa('BOGUS'),
     );
-    expect(res.status).toBe(402);
-    expect(res.body.message).toContain('RENAINF.DEFENSE.INVALID_ACTOR');
+    expect(res.status).toBe(400);
   });
 
   it('POST defesasPrevias → 201', async () => {
     const res = await post(
       `/v1/renainf/processosAdministrativos/${idProcesso}/defesasPrevias`,
-      {
-        requerente: { tipoRequerente: 'PROPRIETARIO', numeroDocumento: 'x' },
-        fundamentacao: 'Defesa prévia de teste.',
-      },
+      validDefesa(),
     );
     expect(res.status).toBe(201);
   });
@@ -147,11 +151,9 @@ describe('renainf lifecycle (INV-RENAINF-001)', () => {
   });
 
   it('second penalty → 402 RENAINF.PENALTY.ALREADY_IMPOSED', async () => {
-    // Distinct key so the guard runs again instead of replaying the first result.
     const res = await post(
       `/v1/renainf/processosAdministrativos/${idProcesso}/penalidades`,
       {},
-      `pen2-${idProcesso}`,
     );
     expect(res.status).toBe(402);
     expect(res.body.message).toContain('RENAINF.PENALTY.ALREADY_IMPOSED');
@@ -160,7 +162,7 @@ describe('renainf lifecycle (INV-RENAINF-001)', () => {
   it('second-instance appeal before JARI → 402 PREVIOUS_INSTANCE_REQUIRED', async () => {
     const res = await post(
       `/v1/renainf/processosAdministrativos/${idProcesso}/recursos`,
-      { instancia: 'SEGUNDA_INSTANCIA' },
+      validRecurso('SEGUNDA_INSTANCIA'),
     );
     expect(res.status).toBe(402);
     expect(res.body.message).toContain(
@@ -171,7 +173,7 @@ describe('renainf lifecycle (INV-RENAINF-001)', () => {
   it('POST recursos JARI → 201 (capture idRecurso)', async () => {
     const res = await post(
       `/v1/renainf/processosAdministrativos/${idProcesso}/recursos`,
-      { instancia: 'JARI' },
+      validRecurso('JARI'),
     );
     expect(res.status).toBe(201);
     expect(typeof res.body.idRecurso).toBe('string');
@@ -181,7 +183,7 @@ describe('renainf lifecycle (INV-RENAINF-001)', () => {
   it('POST recursos SEGUNDA_INSTANCIA after JARI → 201', async () => {
     const res = await post(
       `/v1/renainf/processosAdministrativos/${idProcesso}/recursos`,
-      { instancia: 'SEGUNDA_INSTANCIA' },
+      validRecurso('SEGUNDA_INSTANCIA'),
     );
     expect(res.status).toBe(201);
   });
@@ -209,11 +211,9 @@ describe('renainf lifecycle (INV-RENAINF-001)', () => {
   });
 
   it('second payment → 402 RENAINF.PAYMENT.ALREADY_SETTLED', async () => {
-    // Distinct key so the settlement guard runs again.
     const res = await post(
       `/v1/renainf/processosAdministrativos/${idProcesso}/pagamentos`,
       { valorPago: 195.23, formaPagamento: 'PIX' },
-      `pay2-${idProcesso}`,
     );
     expect(res.status).toBe(402);
     expect(res.body.message).toContain('RENAINF.PAYMENT.ALREADY_SETTLED');

@@ -44,13 +44,37 @@ describe('renach workflow (INV-RENACH-001)', () => {
     expect(Array.isArray(res.body)).toBe(true);
   });
 
+  const validExame = () => ({
+    idAgendamento: 'appt-e2e-1',
+    clinica: { codigoClinica: 'RS-CLINIC-0001', cnpj: '11444777000161' },
+    examinador: {
+      cpf: EXAMINADOR_CPF,
+      conselho: 'CRM',
+      numeroConselho: '12345',
+      uf: 'RS',
+    },
+    condutor: {
+      cpf: '52998224725',
+      nome: 'Fulano',
+      dataNascimento: '1985-03-14',
+    },
+    processo: { numeroRenach: PROC, tipoProcesso: 'RENOVACAO' },
+    exame: { dataRealizacao: '2026-07-10T09:30:00Z', resultado: 'APTO' },
+  });
+
+  it('POST examesMedicos with an incomplete body → 400', async () => {
+    const res = await request(ctx.server)
+      .post(`/v1/renach/processos/${PROC}/examesMedicos`)
+      .set(AUTH)
+      .set('Content-Type', 'application/json')
+      .send({ exame: { resultado: 'APTO' } });
+    expect(res.status).toBe(400);
+    expect(res.body).toMatchObject({ returnCode: 400 });
+  });
+
   it('POST examesMedicos is idempotent for the same Idempotency-Key', async () => {
     const key = `e2e-exame-${Date.now()}`;
-    const body = {
-      clinica: { codigoClinica: 'RS-CLINIC-0001' },
-      examinador: { cpf: EXAMINADOR_CPF },
-      exame: { resultado: 'APTO' },
-    };
+    const body = validExame();
     const first = await request(ctx.server)
       .post(`/v1/renach/processos/${PROC}/examesMedicos`)
       .set(AUTH)

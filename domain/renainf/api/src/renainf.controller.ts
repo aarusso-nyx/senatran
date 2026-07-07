@@ -10,6 +10,10 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { RenainfService } from './renainf.service.js';
+import { DtoValidationPipe } from '../../../shared/api/src/common/dto-validation.pipe.js';
+import { AutoInfracaoDto } from './dto/auto-infracao.dto.js';
+import { DefesaPreviaDto } from './dto/defesa-previa.dto.js';
+import { RecursoDto } from './dto/recurso.dto.js';
 
 type Body = Record<string, unknown>;
 
@@ -49,11 +53,11 @@ export class RenainfController {
 
   @Post('autosInfracao')
   async criarAit(
-    @Body() b: Body,
+    @Body(new DtoValidationPipe(AutoInfracaoDto)) b: AutoInfracaoDto,
     @Headers('idempotency-key') k: string | undefined,
     @Res({ passthrough: true }) res: Response,
   ) {
-    return this.send(res, await this.svc.criarAit(b, k));
+    return this.send(res, await this.svc.criarAit({ ...b }, k));
   }
 
   @Get('autosInfracao/:numeroAit')
@@ -100,11 +104,11 @@ export class RenainfController {
   @Post('processosAdministrativos/:idProcesso/defesasPrevias')
   async defesa(
     @Param('idProcesso') id: string,
-    @Body() b: Body,
+    @Body(new DtoValidationPipe(DefesaPreviaDto)) b: DefesaPreviaDto,
     @Headers('idempotency-key') k: string | undefined,
     @Res({ passthrough: true }) res: Response,
   ) {
-    return this.send(res, await this.svc.protocolarDefesa(id, b, k));
+    return this.send(res, await this.svc.protocolarDefesa(id, { ...b }, k));
   }
 
   @Post('processosAdministrativos/:idProcesso/penalidades')
@@ -129,11 +133,11 @@ export class RenainfController {
   @Post('processosAdministrativos/:idProcesso/recursos')
   async recurso(
     @Param('idProcesso') id: string,
-    @Body() b: Body,
+    @Body(new DtoValidationPipe(RecursoDto)) b: RecursoDto,
     @Headers('idempotency-key') k: string | undefined,
     @Res({ passthrough: true }) res: Response,
   ) {
-    return this.send(res, await this.svc.protocolarRecurso(id, b, k));
+    return this.send(res, await this.svc.protocolarRecurso(id, { ...b }, k));
   }
 
   @Post('recursos/:idRecurso/julgamento')

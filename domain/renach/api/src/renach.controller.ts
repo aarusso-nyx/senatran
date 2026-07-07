@@ -11,6 +11,9 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { RenachService } from './renach.service.js';
+import { DtoValidationPipe } from '../../../shared/api/src/common/dto-validation.pipe.js';
+import { ExameMedicoDto } from './dto/exame-medico.dto.js';
+import { AvaliacaoPsicologicaDto } from './dto/avaliacao-psicologica.dto.js';
 
 type Body = Record<string, unknown>;
 
@@ -72,26 +75,27 @@ export class RenachController {
   @Post('processos/:numeroRenach/examesMedicos')
   async exameMedico(
     @Param('numeroRenach') n: string,
-    @Body() body: Body,
+    @Body(new DtoValidationPipe(ExameMedicoDto)) body: ExameMedicoDto,
     @Headers('idempotency-key') key: string | undefined,
     @Res({ passthrough: true }) res: Response,
   ) {
     return this.send(
       res,
-      await this.svc.registrarExame(n, 'MEDICO', body, key),
+      await this.svc.registrarExame(n, 'MEDICO', { ...body }, key),
     );
   }
 
   @Post('processos/:numeroRenach/avaliacoesPsicologicas')
   async avaliacaoPsicologica(
     @Param('numeroRenach') n: string,
-    @Body() body: Body,
+    @Body(new DtoValidationPipe(AvaliacaoPsicologicaDto))
+    body: AvaliacaoPsicologicaDto,
     @Headers('idempotency-key') key: string | undefined,
     @Res({ passthrough: true }) res: Response,
   ) {
     return this.send(
       res,
-      await this.svc.registrarExame(n, 'PSICOLOGICO', body, key),
+      await this.svc.registrarExame(n, 'PSICOLOGICO', { ...body }, key),
     );
   }
 
