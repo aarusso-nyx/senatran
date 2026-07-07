@@ -1,5 +1,5 @@
 {
-  "head": "ff539acbd83d8ba52eae05c98d18d1c8168631dcb2c473b97f072d7ca984e53a",
+  "head": "23dff5de2d5dc95d890ea090df09adb6314b9cd930677c594ef5eaced14aff3b",
   "records": [
     {
       "schemaVersion": "1.0.0",
@@ -76,6 +76,42 @@
       ],
       "previous_run_hash": "d872e04dc5b8f59a7f197d8e428c6218060281306a0e9a176ccabffd38305716",
       "manifest_hash": "ff539acbd83d8ba52eae05c98d18d1c8168631dcb2c473b97f072d7ca984e53a"
+    },
+    {
+      "schemaVersion": "1.0.0",
+      "id": "EV-ace00b9b3ad6ba5b",
+      "timestamp": "2026-07-07T02:52:15.104Z",
+      "actor": "claude-code",
+      "actor_role": "harness",
+      "action": "services.implement",
+      "status": "completed",
+      "context": {
+        "repo_root": ".",
+        "git": {
+          "head_sha": "6df9415c7086c8563e18636d82885d13712c2453",
+          "dirty_files": [
+            "apps/api/src/app.module.ts",
+            "apps/api/src/health/health.controller.ts",
+            "domain/autorizacoes/",
+            "domain/condutores/",
+            "domain/consulta-csv/",
+            "domain/indicadores/",
+            "domain/infracoes/",
+            "domain/renach/",
+            "domain/renainf/",
+            "domain/restricoes-judiciais/",
+            "domain/roubo-furto/",
+            "domain/shared/api/src/common/",
+            "domain/veiculos/"
+          ]
+        }
+      },
+      "artifacts": [],
+      "notes": [
+        "P4: 88 routes; global CpfUsuarioGuard + WsdenatranExceptionFilter + ReadService; 8 thin read modules over contract views; RENACH/RENAINF transactional modules (state machine+idempotency+audit). Verified: reads 200, auth 401, magic 402/404, RENACH exam 201+idempotent (no dup), RENAINF penalty/appeal ordering 402"
+      ],
+      "previous_run_hash": "ff539acbd83d8ba52eae05c98d18d1c8168631dcb2c473b97f072d7ca984e53a",
+      "manifest_hash": "23dff5de2d5dc95d890ea090df09adb6314b9cd930677c594ef5eaced14aff3b"
     }
   ]
 }

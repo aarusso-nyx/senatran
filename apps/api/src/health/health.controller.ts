@@ -1,5 +1,6 @@
 import { Controller, Get, Inject } from '@nestjs/common';
 import { Database } from '../../../../domain/shared/api/src/database/database.js';
+import { Public } from '../../../../domain/shared/api/src/common/public.decorator.js';
 
 /**
  * Liveness/readiness probe. Not part of the WSDenatran contract — operational
@@ -9,6 +10,7 @@ import { Database } from '../../../../domain/shared/api/src/database/database.js
 export class HealthController {
   constructor(@Inject(Database) private readonly db: Database) {}
 
+  @Public()
   @Get()
   async check(): Promise<{ status: string; db: 'up' | 'down' }> {
     let db: 'up' | 'down' = 'down';
