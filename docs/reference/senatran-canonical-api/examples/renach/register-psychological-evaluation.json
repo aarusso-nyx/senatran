@@ -1,0 +1,31 @@
+{
+  "appointmentId": "appt_01J000000001",
+  "clinic": {
+    "clinicId": "RS-CLINIC-0001",
+    "cnpj": "00000000000100"
+  },
+  "examiner": {
+    "cpf": "00000000000",
+    "council": "CRP",
+    "councilNumber": "00/00000",
+    "uf": "RS"
+  },
+  "evaluation": {
+    "performedAt": "2026-07-10T11:00:00-03:00",
+    "result": "FIT",
+    "validUntil": "2031-07-10",
+    "testBattery": [
+      {
+        "code": "ATTENTION_TEST",
+        "description": "Teste de atenção",
+        "result": "ADEQUATE"
+      }
+    ],
+    "observations": "Sem impedimentos psicológicos registrados."
+  },
+  "digitalSignature": {
+    "type": "ICP_BRASIL",
+    "signedHash": "base64-hash",
+    "certificateSerial": "000000"
+  }
+}

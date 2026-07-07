@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/renainf/infraction-notice.schema.json",
+  "title": "RenainfInfractionNoticeRequest",
+  "type": "object",
+  "required": [
+    "aitNumber",
+    "agencyCode",
+    "issuingAgent",
+    "infraction",
+    "vehicle"
+  ],
+  "properties": {
+    "aitNumber": {
+      "type": "string"
+    },
+    "agencyCode": {
+      "type": "string"
+    },
+    "issuingAgent": {
+      "type": "object",
+      "required": ["cpf", "registration"],
+      "properties": {
+        "cpf": {
+          "type": "string"
+        },
+        "registration": {
+          "type": "string"
+        }
+      }
+    },
+    "device": {
+      "type": "object"
+    },
+    "infraction": {
+      "type": "object",
+      "required": ["code", "occurredAt", "municipalityCode", "location"],
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "unfolding": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "municipalityCode": {
+          "type": "string"
+        },
+        "location": {
+          "type": "object"
+        }
+      }
+    },
+    "vehicle": {
+      "type": "object",
+      "required": ["plate"],
+      "properties": {
+        "plate": {
+          "type": "string"
+        },
+        "renavam": {
+          "type": "string"
+        },
+        "uf": {
+          "type": "string"
+        },
+        "makeModel": {
+          "type": "string"
+        }
+      }
+    },
+    "driver": {
+      "type": "object"
+    },
+    "evidence": {
+      "type": "array"
+    },
+    "signatures": {
+      "type": "object"
+    }
+  }
+}

@@ -6,8 +6,13 @@ layout, and commands. Binding rules live in `AGENTS.md`/`CLAUDE.md`; governance 
 
 ## System summary
 
-`senatran` is a backend-only NestJS REST API that mocks the SERPRO **WSDenatran**
-public contract for dev/test use by siblings `pec` and `teat`.
+`senatran` is a backend-only NestJS REST API mocking SENATRAN/DENATRAN for dev/test
+use by siblings `pec` and `teat`. **Two surfaces, one convention** (all `/v1`,
+`x-cpf-usuario` auth, `{ returnCode, message }` errors, Portuguese camelCase):
+**read** — 57 WSDenatran GET queries (thin controllers over `contract.*` views);
+**transactional** — 30 RENACH/RENAINF workflow endpoints, stateful (state machines,
+idempotency, audit), ported into WSDenatran conventions (D-0009). See
+`docs/framework/contracts/{openapi.yaml,openapi-transactional.yaml,canonical-mapping.md}`.
 
 Core invariants:
 

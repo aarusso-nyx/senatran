@@ -95,6 +95,57 @@
         }
       ],
       "code_areas": ["apps/api/src/**", ".env.example"]
+    },
+    {
+      "id": "INV-RENACH-001",
+      "tests": [
+        {
+          "suite": "e2e",
+          "path": "tests/e2e/renach-workflow.e2e.spec.ts",
+          "names": ["INV-RENACH-001"],
+          "assertions": [
+            "process state transitions follow the RENACH state machine",
+            "exam type/clinic/examiner rule violations return 402 with the domain code",
+            "unknown process returns 404 RENACH.PROCESS.NOT_FOUND"
+          ]
+        }
+      ],
+      "code_areas": ["domain/renach/api/src/**", "database/ddl/**"]
+    },
+    {
+      "id": "INV-RENAINF-001",
+      "tests": [
+        {
+          "suite": "e2e",
+          "path": "tests/e2e/renainf-workflow.e2e.spec.ts",
+          "names": ["INV-RENAINF-001"],
+          "assertions": [
+            "penalty before defense handling returns 402 PENALTY/CASE.INVALID_STATUS",
+            "second-instance before JARI returns 402 APPEAL.PREVIOUS_INSTANCE_REQUIRED",
+            "unknown case returns 404 RENAINF.CASE.NOT_FOUND"
+          ]
+        }
+      ],
+      "code_areas": ["domain/renainf/api/src/**", "database/ddl/**"]
+    },
+    {
+      "id": "INV-IDEMP-001",
+      "tests": [
+        {
+          "suite": "int",
+          "path": "tests/integration/idempotency-audit.integration.spec.ts",
+          "names": ["INV-IDEMP-001"],
+          "assertions": [
+            "replaying a write with the same natural key / Idempotency-Key returns the original result",
+            "every state transition writes an audit.evento row with a payload hash"
+          ]
+        }
+      ],
+      "code_areas": [
+        "domain/renach/api/src/**",
+        "domain/renainf/api/src/**",
+        "domain/shared/api/src/**"
+      ]
     }
   ]
 }

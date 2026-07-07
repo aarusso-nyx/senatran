@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "1.0.0",
+  "version": "1.0.0",
+  "id": "INV-RENACH-001",
+  "domain": "RENACH",
+  "severity": "gate",
+  "type": "state_machine",
+  "title": "RENACH process state machine and exam eligibility rules",
+  "statement": "RENACH transactional endpoints enforce the process state machine (ABERTO → AGUARDANDO_MEDICO → AGENDADO → EM_EXAME → EXAME_REGISTRADO → {AGUARDANDO_PSICOLOGICO|EM_ANALISE|APROVADO|REJEITADO}, with ENCAMINHADO_JUNTA branch). Business rules RENACH.R001–R010 are enforced: an invalid transition or rule violation yields 402 with the domain code in the message; an unknown process yields 404. Exam type must match process type; clinic and examiner must be accredited/active/linked; INAPTO blocks progress pending board.",
+  "rationale": "The transactional half of the mock must behave like the real RENACH workflow so pec/teat can exercise licensing flows deterministically, including the rejection and board-referral branches.",
+  "status": "active",
+  "verification": {
+    "required_suites": ["e2e", "int"],
+    "oracle": "tests"
+  },
+  "authority": {
+    "docs": [
+      {
+        "doc": "docs/framework/arch/renach-renainf-workflows.md",
+        "anchor": "renach-driver-licensing-exams"
+      },
+      {
+        "doc": "docs/framework/contracts/errors.md",
+        "anchor": "renach-domain-codes"
+      }
+    ]
+  },
+  "scope": {
+    "components": ["api", "renach"],
+    "code_areas": ["domain/renach/api/src/**", "database/ddl/**"]
+  },
+  "change_policy": {
+    "breaking_change_requires": ["doc_update", "test_update", "human_approval"],
+    "test_weakening_allowed": false,
+    "human_approval_required": true
+  },
+  "tags": ["renach", "state-machine", "transactional", "D-0009"]
+}

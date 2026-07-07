@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/renainf/preliminary-defense.schema.json",
+  "title": "RenainfPreliminaryDefenseRequest",
+  "type": "object",
+  "required": ["submittedBy", "arguments", "submittedAt"],
+  "properties": {
+    "submittedBy": {
+      "type": "object",
+      "required": ["actorType", "document"],
+      "properties": {
+        "actorType": {
+          "enum": ["OWNER", "IDENTIFIED_DRIVER", "LEGAL_REPRESENTATIVE"]
+        },
+        "document": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "arguments": {
+      "type": "string"
+    },
+    "attachments": {
+      "type": "array"
+    },
+    "submittedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "channel": {
+      "type": "string"
+    }
+  }
+}

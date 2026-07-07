@@ -91,3 +91,25 @@ shapes are:
 `pnpm seed:generate` is idempotent and reviewable: the emitted SQL is committed, so
 a diff shows exactly what changed. CI can regenerate and assert no diff
 (`git diff --exit-code database/seed`) to prevent drift.
+
+## Transactional seeds (RENACH / RENAINF)
+
+The transactional endpoints are stateful, so seeds pre-position processes/cases at
+**representative states** across the state machines so consumers can drive each
+transition (and each rejection branch) deterministically.
+
+| Entity                                      | Rows      | Notes                                                                                                                                                          |
+| ------------------------------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `renach_clinica`                            | ~20       | mix of credenciada/ativa and not (drives R003).                                                                                                                |
+| `renach_profissional`                       | ~40       | CRM + CRP, some not linked/accredited (R004).                                                                                                                  |
+| `renach_processo`                           | ~60       | spread across situações (`ABERTO`, `AGUARDANDO_MEDICO`, `AGENDADO`, `EXAME_REGISTRADO`, `APROVADO`, `REJEITADO`); tied to seeded `condutor` CPFs.              |
+| `renach_exame`                              | ~80       | for advanced processes, mix of resultados incl. `INAPTO`/`ENCAMINHADO_JUNTA`.                                                                                  |
+| `renainf_dispositivo` / `renainf_faixa_ait` | ~15 / ~20 | some não homologado / faixas reservadas (R002, OUT_OF_RANGE).                                                                                                  |
+| `renainf_ait`                               | ~120      | reuse seeded `veiculo` placas / `infracao` `codigo_infracao` so the two surfaces stay coherent.                                                                |
+| `renainf_processo`                          | ~90       | spread across situações (`AUTUACAO_ABERTA`, `NOTIFICADO_AUTUACAO`, `AGUARDANDO_DEFESA_PREVIA`, `PENALIDADE_IMPOSTA`, `RECURSO_JARI_APRESENTADO`, `ARQUIVADO`). |
+
+Known transactional fixtures (stable, in the generated manifest): a
+`numeroRenach` at `AGUARDANDO_MEDICO` ready for exam registration; a `numeroAit` +
+`idProcesso` at `NOTIFICADO_AUTUACAO` ready for a preliminary defense; a case at
+`PENALIDADE_IMPOSTA` ready for a JARI appeal. Every seeded transactional row also
+emits a matching `audit.evento` so the audit trail is non-empty from the start.

@@ -1,0 +1,42 @@
+{
+  "appointmentId": "appt_01J000000000",
+  "clinic": {
+    "clinicId": "RS-CLINIC-0001",
+    "cnpj": "00000000000100"
+  },
+  "examiner": {
+    "cpf": "00000000000",
+    "council": "CRM",
+    "councilNumber": "00000",
+    "uf": "RS"
+  },
+  "candidate": {
+    "cpf": "00000000000",
+    "name": "Nome do Condutor",
+    "birthDate": "1980-01-01"
+  },
+  "process": {
+    "renachNumber": "RS123456789",
+    "processType": "RENEWAL",
+    "currentCategory": "B",
+    "requestedCategory": "B"
+  },
+  "exam": {
+    "performedAt": "2026-07-10T09:30:00-03:00",
+    "result": "FIT_WITH_RESTRICTIONS",
+    "validUntil": "2031-07-10",
+    "restrictions": [
+      {
+        "code": "A",
+        "description": "Uso obrigatório de lentes corretivas"
+      }
+    ],
+    "observations": "Apto com restrição."
+  },
+  "attachments": [],
+  "digitalSignature": {
+    "type": "ICP_BRASIL",
+    "signedHash": "base64-hash",
+    "certificateSerial": "000000"
+  }
+}

@@ -1,0 +1,1895 @@
+openapi: 3.1.0
+info:
+  title: WSDenatran REST API (mock) — Transactional RENACH/RENAINF
+  version: 1.0.0
+  license:
+    name: UNLICENSED
+    url: https://example.invalid/senatran/LICENSE
+  description: >-
+    Dev-only mock. This specification is the transactional half of the same
+    WSDenatran mock, ported from the canonical RENACH/RENAINF adapter API into
+    the WSDenatran contract conventions (see
+    `docs/framework/contracts/canonical-mapping.md`). It shares the exact same
+    conventions as `openapi.yaml`: single `/v1` surface, `x-cpf-usuario` header,
+    certificate simulation via `x-client-cert-cn`, raw JSON success bodies and
+    the shared `ErrorResponse` (`returnCode`, `message`) error envelope.
+
+
+    Unlike the read-only `openapi.yaml`, these operations are transactional:
+    they create and mutate RENACH driver-licensing processes and RENAINF
+    administrative-infraction cases, driving their respective state machines.
+    Business-rule / state violations return 402 with the canonical error code
+    carried in `message` as `CODE — descrição`. Not for production use.
+
+servers:
+  - url: /v1
+
+security:
+  - clientCertSimulation: []
+
+tags:
+  - name: renachProcessos
+    description: RENACH — processos de habilitação (consulta, elegibilidade)
+  - name: renachExames
+    description: RENACH — exames médicos, avaliações psicológicas e retificações
+  - name: renachAgendamentos
+    description: RENACH — agendamentos de exame e check-in
+  - name: renachClinicas
+    description: RENACH — clínicas e profissionais credenciados
+  - name: renachJunta
+    description: RENACH — encaminhamentos e pareceres de junta médica
+  - name: renainfTalonario
+    description: RENAINF — talonário eletrônico (dispositivos, sincronização, faixas)
+  - name: renainfAutosInfracao
+    description: RENAINF — autos de infração de trânsito (AIT)
+  - name: renainfProcessos
+    description: RENAINF — processos administrativos e notificações
+  - name: renainfRecursos
+    description: RENAINF — defesas prévias, recursos e julgamentos
+  - name: renainfPagamentos
+    description: RENAINF — débitos e pagamentos
+
+paths:
+  # ---------------------------------------------------------------------------
+  # RENACH
+  # ---------------------------------------------------------------------------
+  /renach/processos/{numeroRenach}:
+    get:
+      tags: [renachProcessos]
+      operationId: getProcessoRenach
+      summary: Consultar processo RENACH
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: numeroRenach
+          in: path
+          required: true
+          description: Número do processo RENACH
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProcessoRenach' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404':
+          description: >-
+            Não encontrado. `RENACH.PROCESS.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /renach/processos/{numeroRenach}/elegibilidadeExame:
+    post:
+      tags: [renachProcessos]
+      operationId: verificarElegibilidadeExame
+      summary: Consultar elegibilidade para exame
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - name: numeroRenach
+          in: path
+          required: true
+          description: Número do processo RENACH
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ElegibilidadeExameRequest' }
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                { $ref: '#/components/schemas/ElegibilidadeExameResponse' }
+        '400':
+          description: >-
+            Requisição inválida. `RENACH.EXAM.INVALID_TYPE`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: >-
+            Erro de negócio. `RENACH.PROCESS.INVALID_STATUS`,
+            `RENACH.PROCESS.BLOCKED`, `RENACH.PROCESS.EXPIRED`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: >-
+            Não encontrado. `RENACH.PROCESS.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /renach/clinicasCredenciadas:
+    get:
+      tags: [renachClinicas]
+      operationId: listarClinicasCredenciadas
+      summary: Listar clínicas credenciadas
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClinicaCredenciadaList' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /renach/profissionaisCredenciados:
+    get:
+      tags: [renachClinicas]
+      operationId: listarProfissionaisCredenciados
+      summary: Listar profissionais credenciados
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema:
+                { $ref: '#/components/schemas/ProfissionalCredenciadoList' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: >-
+            Erro de negócio. `RENACH.EXAMINER.NOT_ACCREDITED`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /renach/processos/{numeroRenach}/agendamentos:
+    post:
+      tags: [renachAgendamentos]
+      operationId: criarAgendamentoExame
+      summary: Criar agendamento de exame
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - name: numeroRenach
+          in: path
+          required: true
+          description: Número do processo RENACH
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AgendamentoRequest' }
+      responses:
+        '201':
+          description: Criado. Agendamento registrado com sucesso.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Agendamento' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: >-
+            Erro de negócio. `RENACH.PROCESS.INVALID_STATUS`,
+            `RENACH.CLINIC.NOT_ACCREDITED`, `RENACH.CLINIC.INACTIVE`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: >-
+            Não encontrado. `RENACH.PROCESS.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /renach/agendamentos/{idAgendamento}:
+    patch:
+      tags: [renachAgendamentos]
+      operationId: alterarAgendamento
+      summary: Cancelar ou remarcar agendamento
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - name: idAgendamento
+          in: path
+          required: true
+          description: Identificador do agendamento
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AgendamentoPatchRequest' }
+      responses:
+        '200':
+          description: OK. Agendamento atualizado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Agendamento' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: >-
+            Erro de negócio. `RENACH.PROCESS.INVALID_STATUS`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: >-
+            Não encontrado. `RENACH.PROCESS.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /renach/agendamentos/{idAgendamento}/checkin:
+    post:
+      tags: [renachAgendamentos]
+      operationId: iniciarAtendimento
+      summary: Iniciar atendimento
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - name: idAgendamento
+          in: path
+          required: true
+          description: Identificador do agendamento
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CheckinRequest' }
+      responses:
+        '200':
+          description: OK. Atendimento iniciado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Agendamento' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: >-
+            Erro de negócio. `RENACH.PROCESS.INVALID_STATUS`,
+            `RENACH.BIOMETRY.NOT_MATCHED`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: >-
+            Não encontrado. `RENACH.PROCESS.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /renach/processos/{numeroRenach}/examesMedicos:
+    post:
+      tags: [renachExames]
+      operationId: registrarExameMedico
+      summary: Registrar exame médico
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - name: numeroRenach
+          in: path
+          required: true
+          description: Número do processo RENACH
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ExameMedicoRequest' }
+      responses:
+        '201':
+          description: Criado. Exame médico registrado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Exame' }
+        '400':
+          description: >-
+            Requisição inválida. `RENACH.EXAM.INVALID_TYPE`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: >-
+            Erro de negócio. `RENACH.EXAM.ALREADY_RECORDED`,
+            `RENACH.EXAM.RESULT_NOT_ALLOWED`, `RENACH.EXAM.REQUIRES_BOARD`,
+            `RENACH.CLINIC.NOT_ACCREDITED`, `RENACH.EXAMINER.NOT_ACCREDITED`,
+            `RENACH.EXAMINER.NOT_LINKED_TO_CLINIC`, `RENACH.SIGNATURE.INVALID`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: >-
+            Não encontrado. `RENACH.PROCESS.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /renach/processos/{numeroRenach}/avaliacoesPsicologicas:
+    post:
+      tags: [renachExames]
+      operationId: registrarAvaliacaoPsicologica
+      summary: Registrar avaliação psicológica
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - name: numeroRenach
+          in: path
+          required: true
+          description: Número do processo RENACH
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AvaliacaoPsicologicaRequest' }
+      responses:
+        '201':
+          description: Criado. Avaliação psicológica registrada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Exame' }
+        '400':
+          description: >-
+            Requisição inválida. `RENACH.EXAM.INVALID_TYPE`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: >-
+            Erro de negócio. `RENACH.EXAM.ALREADY_RECORDED`,
+            `RENACH.EXAM.RESULT_NOT_ALLOWED`, `RENACH.EXAMINER.NOT_ACCREDITED`,
+            `RENACH.EXAMINER.NOT_LINKED_TO_CLINIC`, `RENACH.SIGNATURE.INVALID`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: >-
+            Não encontrado. `RENACH.PROCESS.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /renach/processos/{numeroRenach}/exames:
+    get:
+      tags: [renachExames]
+      operationId: consultarResultadosExames
+      summary: Consultar resultados de exames
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: numeroRenach
+          in: path
+          required: true
+          description: Número do processo RENACH
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExameList' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404':
+          description: >-
+            Não encontrado. `RENACH.PROCESS.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /renach/exames/{idExame}/retificacoes:
+    post:
+      tags: [renachExames]
+      operationId: retificarExame
+      summary: Retificar exame
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - name: idExame
+          in: path
+          required: true
+          description: Identificador do exame
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RetificacaoExameRequest' }
+      responses:
+        '202':
+          description: Aceito. Retificação em processamento.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AceiteAssincrono' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: >-
+            Erro de negócio. `RENACH.RECTIFICATION.NOT_ALLOWED`,
+            `RENACH.EXAM.RESULT_NOT_ALLOWED`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: >-
+            Não encontrado. `RENACH.PROCESS.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /renach/processos/{numeroRenach}/encaminhamentosJunta:
+    post:
+      tags: [renachJunta]
+      operationId: encaminharJuntaMedica
+      summary: Encaminhar para junta médica
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - name: numeroRenach
+          in: path
+          required: true
+          description: Número do processo RENACH
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EncaminhamentoJuntaRequest' }
+      responses:
+        '202':
+          description: Aceito. Encaminhamento à junta em processamento.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AceiteAssincrono' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: >-
+            Erro de negócio. `RENACH.EXAM.REQUIRES_BOARD`,
+            `RENACH.PROCESS.INVALID_STATUS`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: >-
+            Não encontrado. `RENACH.PROCESS.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /renach/processos/{numeroRenach}/pareceresJunta:
+    post:
+      tags: [renachJunta]
+      operationId: registrarParecerJunta
+      summary: Registrar parecer de junta
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - name: numeroRenach
+          in: path
+          required: true
+          description: Número do processo RENACH
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ParecerJuntaRequest' }
+      responses:
+        '201':
+          description: Criado. Parecer de junta registrado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Exame' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: >-
+            Erro de negócio. `RENACH.PROCESS.INVALID_STATUS`,
+            `RENACH.EXAM.RESULT_NOT_ALLOWED`, `RENACH.SIGNATURE.INVALID`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: >-
+            Não encontrado. `RENACH.PROCESS.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  # ---------------------------------------------------------------------------
+  # RENAINF
+  # ---------------------------------------------------------------------------
+  /renainf/talonario/dispositivos:
+    post:
+      tags: [renainfTalonario]
+      operationId: registrarDispositivoTalonario
+      summary: Registrar dispositivo de talonário
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DispositivoTalonarioRequest' }
+      responses:
+        '201':
+          description: Criado. Dispositivo de talonário registrado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DispositivoTalonario' }
+        '400':
+          description: >-
+            Requisição inválida. `RENAINF.AIT.INVALID_DEVICE`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: >-
+            Erro de negócio. `RENAINF.SNE.NOT_ADHERED`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /renainf/talonario/sincronizacao:
+    get:
+      tags: [renainfTalonario]
+      operationId: sincronizarDominioOperacional
+      summary: Sincronizar domínio operacional
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SincronizacaoTalonario' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /renainf/talonario/faixasNumeracaoAit:
+    post:
+      tags: [renainfTalonario]
+      operationId: reservarFaixaNumeracaoAit
+      summary: Reservar numeração de AIT
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FaixaNumeracaoAitRequest' }
+      responses:
+        '201':
+          description: Criado. Faixa de numeração de AIT reservada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FaixaNumeracaoAit' }
+        '400':
+          description: >-
+            Requisição inválida. `RENAINF.AIT.INVALID_NUMBER`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: >-
+            Erro de negócio. `RENAINF.AIT.OUT_OF_RANGE`,
+            `RENAINF.AIT.INVALID_DEVICE`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /renainf/autosInfracao:
+    post:
+      tags: [renainfAutosInfracao]
+      operationId: criarAutoInfracao
+      summary: Criar AIT
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AutoInfracaoRequest' }
+      responses:
+        '201':
+          description: Criado. Auto de infração registrado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AutoInfracao' }
+        '400':
+          description: >-
+            Requisição inválida. `RENAINF.AIT.INVALID_NUMBER`,
+            `RENAINF.AIT.INVALID_INFRACTION_CODE`, `RENAINF.AIT.INVALID_AGENT`,
+            `RENAINF.AIT.INVALID_DEVICE`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: >-
+            Erro de negócio. `RENAINF.AIT.DUPLICATED`, `RENAINF.AIT.OUT_OF_RANGE`,
+            `RENAINF.AIT.EVIDENCE_REQUIRED`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /renainf/autosInfracao/lotes:
+    post:
+      tags: [renainfAutosInfracao]
+      operationId: transmitirLoteAutosInfracao
+      summary: Transmitir lote de AITs offline
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoteAutosInfracaoRequest' }
+      responses:
+        '202':
+          description: Aceito. Lote em processamento.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AceiteAssincrono' }
+        '400':
+          description: >-
+            Requisição inválida. `RENAINF.AIT.INVALID_NUMBER`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: >-
+            Erro de negócio. `RENAINF.AIT.TRANSMISSION_EXPIRED`,
+            `RENAINF.AIT.OUT_OF_RANGE`, `RENAINF.AIT.DUPLICATED`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /renainf/autosInfracao/{numeroAit}:
+    get:
+      tags: [renainfAutosInfracao]
+      operationId: consultarAutoInfracao
+      summary: Consultar AIT
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: numeroAit
+          in: path
+          required: true
+          description: Número do auto de infração de trânsito
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AutoInfracao' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404':
+          description: >-
+            Não encontrado. `RENAINF.CASE.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /renainf/autosInfracao/{numeroAit}/solicitacoesCancelamento:
+    post:
+      tags: [renainfAutosInfracao]
+      operationId: solicitarCancelamentoAutoInfracao
+      summary: Solicitar cancelamento do AIT
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - name: numeroAit
+          in: path
+          required: true
+          description: Número do auto de infração de trânsito
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              { $ref: '#/components/schemas/SolicitacaoCancelamentoRequest' }
+      responses:
+        '202':
+          description: Aceito. Solicitação de cancelamento em análise.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AceiteAssincrono' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: >-
+            Erro de negócio. `RENAINF.AIT.CANCELLATION_NOT_ALLOWED`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: >-
+            Não encontrado. `RENAINF.CASE.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /renainf/processosAdministrativos:
+    post:
+      tags: [renainfProcessos]
+      operationId: abrirAutuacao
+      summary: Abrir autuação
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              { $ref: '#/components/schemas/ProcessoAdministrativoRequest' }
+      responses:
+        '201':
+          description: Criado. Processo administrativo (autuação) aberto.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProcessoAdministrativo' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: >-
+            Erro de negócio. `RENAINF.CASE.INVALID_STATUS`,
+            `RENAINF.AIT.DUPLICATED`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: >-
+            Não encontrado. `RENAINF.CASE.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /renainf/processosAdministrativos/{idProcesso}/notificacoes/autuacao:
+    post:
+      tags: [renainfProcessos]
+      operationId: emitirNotificacaoAutuacao
+      summary: Emitir notificação de autuação
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - name: idProcesso
+          in: path
+          required: true
+          description: Identificador do processo administrativo
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NotificacaoRequest' }
+      responses:
+        '201':
+          description: Criado. Notificação de autuação emitida.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Notificacao' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: >-
+            Erro de negócio. `RENAINF.CASE.INVALID_STATUS`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: >-
+            Não encontrado. `RENAINF.CASE.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /renainf/processosAdministrativos/{idProcesso}/indicacoesCondutor:
+    post:
+      tags: [renainfProcessos]
+      operationId: registrarIndicacaoCondutor
+      summary: Registrar indicação de condutor
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - name: idProcesso
+          in: path
+          required: true
+          description: Identificador do processo administrativo
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/IndicacaoCondutorRequest' }
+      responses:
+        '201':
+          description: Criado. Indicação de condutor registrada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProcessoAdministrativo' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: >-
+            Erro de negócio. `RENAINF.CASE.INVALID_STATUS`,
+            `RENAINF.NOTICE.DEADLINE_EXPIRED`, `RENAINF.DEFENSE.INVALID_ACTOR`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: >-
+            Não encontrado. `RENAINF.CASE.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /renainf/processosAdministrativos/{idProcesso}/defesasPrevias:
+    post:
+      tags: [renainfRecursos]
+      operationId: protocolarDefesaPrevia
+      summary: Protocolar defesa prévia
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - name: idProcesso
+          in: path
+          required: true
+          description: Identificador do processo administrativo
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DefesaPreviaRequest' }
+      responses:
+        '201':
+          description: Criado. Defesa prévia protocolada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProcessoAdministrativo' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: >-
+            Erro de negócio. `RENAINF.DEFENSE.NOT_ALLOWED`,
+            `RENAINF.DEFENSE.LATE_SUBMISSION`, `RENAINF.DEFENSE.INVALID_ACTOR`,
+            `RENAINF.CASE.INVALID_STATUS`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: >-
+            Não encontrado. `RENAINF.CASE.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /renainf/processosAdministrativos/{idProcesso}/penalidades:
+    post:
+      tags: [renainfProcessos]
+      operationId: imporPenalidade
+      summary: Imposição de penalidade
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - name: idProcesso
+          in: path
+          required: true
+          description: Identificador do processo administrativo
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PenalidadeRequest' }
+      responses:
+        '201':
+          description: Criado. Penalidade imposta.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProcessoAdministrativo' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: >-
+            Erro de negócio. `RENAINF.PENALTY.ALREADY_IMPOSED`,
+            `RENAINF.CASE.INVALID_STATUS`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: >-
+            Não encontrado. `RENAINF.CASE.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /renainf/processosAdministrativos/{idProcesso}/notificacoes/penalidade:
+    post:
+      tags: [renainfProcessos]
+      operationId: emitirNotificacaoPenalidade
+      summary: Emitir notificação de penalidade
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - name: idProcesso
+          in: path
+          required: true
+          description: Identificador do processo administrativo
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NotificacaoRequest' }
+      responses:
+        '201':
+          description: Criado. Notificação de penalidade emitida.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Notificacao' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: >-
+            Erro de negócio. `RENAINF.CASE.INVALID_STATUS`,
+            `RENAINF.PENALTY.ALREADY_IMPOSED`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: >-
+            Não encontrado. `RENAINF.CASE.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /renainf/processosAdministrativos/{idProcesso}/recursos:
+    post:
+      tags: [renainfRecursos]
+      operationId: protocolarRecurso
+      summary: Protocolar recurso JARI ou segunda instância
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - name: idProcesso
+          in: path
+          required: true
+          description: Identificador do processo administrativo
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecursoRequest' }
+      responses:
+        '201':
+          description: Criado. Recurso protocolado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Recurso' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: >-
+            Erro de negócio. `RENAINF.APPEAL.INVALID_INSTANCE`,
+            `RENAINF.APPEAL.PREVIOUS_INSTANCE_REQUIRED`,
+            `RENAINF.CASE.INVALID_STATUS`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: >-
+            Não encontrado. `RENAINF.CASE.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /renainf/recursos/{idRecurso}/julgamento:
+    post:
+      tags: [renainfRecursos]
+      operationId: registrarJulgamentoRecurso
+      summary: Registrar julgamento de recurso
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - name: idRecurso
+          in: path
+          required: true
+          description: Identificador do recurso
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/JulgamentoRecursoRequest' }
+      responses:
+        '201':
+          description: Criado. Julgamento do recurso registrado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Recurso' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: >-
+            Erro de negócio. `RENAINF.APPEAL.INVALID_INSTANCE`,
+            `RENAINF.CASE.INVALID_STATUS`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: >-
+            Não encontrado. `RENAINF.CASE.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /renainf/processosAdministrativos/{idProcesso}/debito:
+    get:
+      tags: [renainfPagamentos]
+      operationId: consultarDebito
+      summary: Consultar débito
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: idProcesso
+          in: path
+          required: true
+          description: Identificador do processo administrativo
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK. Tudo funcionou como esperado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Debito' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404':
+          description: >-
+            Não encontrado. `RENAINF.CASE.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /renainf/processosAdministrativos/{idProcesso}/pagamentos:
+    post:
+      tags: [renainfPagamentos]
+      operationId: registrarPagamento
+      summary: Registrar pagamento
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - name: idProcesso
+          in: path
+          required: true
+          description: Identificador do processo administrativo
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PagamentoRequest' }
+      responses:
+        '201':
+          description: Criado. Pagamento registrado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Pagamento' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: >-
+            Erro de negócio. `RENAINF.PAYMENT.ALREADY_SETTLED`,
+            `RENAINF.CASE.INVALID_STATUS`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: >-
+            Não encontrado. `RENAINF.CASE.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+components:
+  securitySchemes:
+    clientCertificate:
+      type: mutualTLS
+      description: >-
+        Real-service authentication: client digital certificate (mTLS). Using the
+        service requires prior registration of the certificate. Documented for
+        fidelity; the mock does not perform a TLS handshake.
+    clientCertSimulation:
+      type: apiKey
+      in: header
+      name: x-client-cert-cn
+      description: >-
+        Mock stand-in for the real mTLS certificate. Send the allowlisted
+        certificate Common Name in the `x-client-cert-cn` header. Enforced when
+        `AUTH_CERT_SIMULATION=on` (default); ignored when off. Every request must
+        also send `x-cpf-usuario`. See `docs/framework/contracts/auth.md`.
+
+  parameters:
+    XCpfUsuario:
+      name: x-cpf-usuario
+      in: header
+      required: true
+      description: CPF do usuário que está fazendo a requisição
+      schema:
+        type: string
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: >-
+        Chave de idempotência opcional. Se enviada, é honrada para deduplicar
+        escritas; caso contrário, a deduplicação usa chaves naturais
+        (`numeroAit`, `numeroRenach`).
+      schema:
+        type: string
+
+  responses:
+    BadRequest:
+      description: Requisição inválida. A requisição não foi aceita, geralmente por falta de um parâmetro requerido.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Não autorizado. Problemas durante a autenticação do certificado ou do CPF do usuário.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    BusinessError:
+      description: Requisição falhou. Os parâmetros foram validados, mas houve algum erro de negócio.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Não encontrado. O recurso solicitado não existe.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ServerError:
+      description: Erro no servidor. Ocorreu algum erro interno.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        returnCode:
+          type: integer
+        message:
+          type: string
+
+    # -----------------------------------------------------------------------
+    # Enums e tipos compartilhados
+    # -----------------------------------------------------------------------
+    TipoProcesso:
+      type: string
+      enum:
+        - PRIMEIRA_HABILITACAO
+        - RENOVACAO
+        - MUDANCA_CATEGORIA
+        - ADICAO_CATEGORIA
+    ResultadoExame:
+      type: string
+      enum:
+        - APTO
+        - APTO_COM_RESTRICOES
+        - INAPTO_TEMPORARIO
+        - INAPTO
+        - ENCAMINHADO_JUNTA
+        - PENDENTE
+    TipoRequerente:
+      type: string
+      enum:
+        - PROPRIETARIO
+        - CONDUTOR_IDENTIFICADO
+        - REPRESENTANTE_LEGAL
+    Instancia:
+      type: string
+      enum:
+        - JARI
+        - SEGUNDA_INSTANCIA
+    SituacaoRenach:
+      type: string
+      description: Estado do processo RENACH na máquina de estados.
+      enum:
+        - ABERTO
+        - AGUARDANDO_MEDICO
+        - AGENDADO
+        - EM_EXAME
+        - EXAME_REGISTRADO
+        - AGUARDANDO_PSICOLOGICO
+        - EM_ANALISE
+        - APROVADO
+        - REJEITADO
+    SituacaoRenainf:
+      type: string
+      description: Estado do processo administrativo RENAINF na máquina de estados.
+      enum:
+        - RASCUNHO
+        - EMITIDO
+        - ASSINADO
+        - TRANSMITIDO
+        - RECEBIDO
+        - VALIDADO
+        - REJEITADO
+        - AUTUACAO_ABERTA
+        - NOTIFICADO_AUTUACAO
+        - AGUARDANDO_INDICACAO_CONDUTOR
+        - AGUARDANDO_DEFESA_PREVIA
+        - DEFESA_APRESENTADA
+        - DEFESA_ACEITA
+        - DEFESA_REJEITADA
+        - PENALIDADE_IMPOSTA
+        - NOTIFICADO_PENALIDADE
+        - RECURSO_JARI_APRESENTADO
+        - JARI_PROVIDO
+        - JARI_NEGADO
+        - SEGUNDA_INSTANCIA_APRESENTADA
+        - DECISAO_FINAL
+        - ARQUIVADO
+    AssinaturaDigital:
+      type: object
+      description: Assinatura digital do ato.
+      properties:
+        certificado: { type: string }
+        hash: { type: string }
+        dataAssinatura: { type: string, format: date-time }
+    Anexo:
+      type: object
+      properties:
+        nome: { type: string }
+        tipoConteudo: { type: string }
+        hash: { type: string }
+        urlArmazenamento: { type: string }
+    Restricao:
+      type: object
+      properties:
+        codigo: { type: string }
+        descricao: { type: string }
+    AceiteAssincrono:
+      type: object
+      description: Resposta de aceite assíncrono (202).
+      required: [protocolo, situacao]
+      properties:
+        protocolo: { type: string }
+        situacao:
+          type: string
+          description: Estado do recurso após o aceite (RENACH ou RENAINF).
+
+    # -----------------------------------------------------------------------
+    # RENACH — request schemas
+    # -----------------------------------------------------------------------
+    ElegibilidadeExameRequest:
+      type: object
+      description: Dados para verificação de elegibilidade ao exame.
+      required: [tipoProcesso]
+      properties:
+        tipoProcesso: { $ref: '#/components/schemas/TipoProcesso' }
+        categoriaAtual: { type: string }
+        categoriaPretendida: { type: string }
+    AgendamentoRequest:
+      type: object
+      required: [dataHora, codigoClinica, cpfCondutor]
+      properties:
+        idAgendamento: { type: string }
+        dataHora: { type: string, format: date-time }
+        codigoClinica: { type: string }
+        cpfCondutor: { type: string }
+    AgendamentoPatchRequest:
+      type: object
+      description: Cancelamento ou remarcação de agendamento.
+      properties:
+        dataHora: { type: string, format: date-time }
+        codigoClinica: { type: string }
+        cancelar: { type: boolean }
+        motivo: { type: string }
+    CheckinRequest:
+      type: object
+      required: [cpfCondutor]
+      properties:
+        cpfCondutor: { type: string }
+        dataHora: { type: string, format: date-time }
+        biometriaValidada: { type: boolean }
+    ExameMedicoRequest:
+      type: object
+      description: Registro de exame médico (portado de MedicalExamRequest).
+      required: [idAgendamento, clinica, examinador, condutor, processo, exame]
+      properties:
+        idAgendamento: { type: string }
+        clinica:
+          type: object
+          required: [codigoClinica, cnpj]
+          properties:
+            codigoClinica: { type: string }
+            cnpj: { type: string }
+        examinador:
+          type: object
+          required: [cpf, conselho, numeroConselho, uf]
+          properties:
+            cpf: { type: string }
+            conselho:
+              type: string
+              enum: [CRM]
+            numeroConselho: { type: string }
+            uf: { type: string }
+        condutor:
+          type: object
+          required: [cpf, nome, dataNascimento]
+          properties:
+            cpf: { type: string }
+            nome: { type: string }
+            dataNascimento: { type: string, format: date }
+        processo:
+          type: object
+          required: [numeroRenach, tipoProcesso]
+          properties:
+            numeroRenach: { type: string }
+            tipoProcesso: { $ref: '#/components/schemas/TipoProcesso' }
+            categoriaAtual: { type: string }
+            categoriaPretendida: { type: string }
+        exame:
+          type: object
+          required: [dataRealizacao, resultado]
+          properties:
+            dataRealizacao: { type: string, format: date-time }
+            resultado: { $ref: '#/components/schemas/ResultadoExame' }
+            dataValidade: { type: string, format: date }
+            restricoes:
+              type: array
+              items: { $ref: '#/components/schemas/Restricao' }
+            observacoes: { type: string }
+        anexos:
+          type: array
+          items: { $ref: '#/components/schemas/Anexo' }
+        assinaturaDigital: { $ref: '#/components/schemas/AssinaturaDigital' }
+    AvaliacaoPsicologicaRequest:
+      type: object
+      description: Registro de avaliação psicológica (portado de PsychologicalEvaluationRequest).
+      required: [idAgendamento, clinica, examinador, avaliacao]
+      properties:
+        idAgendamento: { type: string }
+        clinica:
+          type: object
+          properties:
+            codigoClinica: { type: string }
+            cnpj: { type: string }
+        examinador:
+          type: object
+          properties:
+            cpf: { type: string }
+            conselho:
+              type: string
+              enum: [CRP]
+            numeroConselho: { type: string }
+            uf: { type: string }
+        avaliacao:
+          type: object
+          required: [dataRealizacao, resultado]
+          properties:
+            dataRealizacao: { type: string, format: date-time }
+            resultado: { $ref: '#/components/schemas/ResultadoExame' }
+            dataValidade: { type: string, format: date }
+            bateriaTestes:
+              type: array
+              items: { type: string }
+            observacoes: { type: string }
+        assinaturaDigital: { $ref: '#/components/schemas/AssinaturaDigital' }
+    RetificacaoExameRequest:
+      type: object
+      description: Solicitação de retificação de exame.
+      required: [motivo]
+      properties:
+        motivo: { type: string }
+        resultado: { $ref: '#/components/schemas/ResultadoExame' }
+        observacoes: { type: string }
+        assinaturaDigital: { $ref: '#/components/schemas/AssinaturaDigital' }
+    EncaminhamentoJuntaRequest:
+      type: object
+      description: Encaminhamento do processo à junta médica.
+      required: [motivo]
+      properties:
+        motivo: { type: string }
+        idExame: { type: string }
+        observacoes: { type: string }
+    ParecerJuntaRequest:
+      type: object
+      description: Parecer da junta médica.
+      required: [resultado]
+      properties:
+        resultado: { $ref: '#/components/schemas/ResultadoExame' }
+        dataRealizacao: { type: string, format: date-time }
+        dataValidade: { type: string, format: date }
+        restricoes:
+          type: array
+          items: { $ref: '#/components/schemas/Restricao' }
+        observacoes: { type: string }
+        assinaturaDigital: { $ref: '#/components/schemas/AssinaturaDigital' }
+
+    # -----------------------------------------------------------------------
+    # RENACH — response schemas
+    # -----------------------------------------------------------------------
+    ProcessoRenach:
+      type: object
+      properties:
+        protocolo: { type: string }
+        numeroRenach: { type: string }
+        situacao: { $ref: '#/components/schemas/SituacaoRenach' }
+        tipoProcesso: { $ref: '#/components/schemas/TipoProcesso' }
+        categoriaAtual: { type: string }
+        categoriaPretendida: { type: string }
+        condutor:
+          type: object
+          properties:
+            cpf: { type: string }
+            nome: { type: string }
+            dataNascimento: { type: string, format: date }
+    ElegibilidadeExameResponse:
+      type: object
+      properties:
+        protocolo: { type: string }
+        numeroRenach: { type: string }
+        situacao: { $ref: '#/components/schemas/SituacaoRenach' }
+        elegivel: { type: boolean }
+        motivo: { type: string }
+    Agendamento:
+      type: object
+      properties:
+        protocolo: { type: string }
+        idAgendamento: { type: string }
+        numeroRenach: { type: string }
+        situacao: { $ref: '#/components/schemas/SituacaoRenach' }
+        dataHora: { type: string, format: date-time }
+        codigoClinica: { type: string }
+        cpfCondutor: { type: string }
+    Exame:
+      type: object
+      properties:
+        protocolo: { type: string }
+        idExame: { type: string }
+        numeroRenach: { type: string }
+        situacao: { $ref: '#/components/schemas/SituacaoRenach' }
+        resultado: { $ref: '#/components/schemas/ResultadoExame' }
+        dataRealizacao: { type: string, format: date-time }
+        dataValidade: { type: string, format: date }
+        restricoes:
+          type: array
+          items: { $ref: '#/components/schemas/Restricao' }
+    ExameList:
+      type: object
+      properties:
+        exames:
+          type: array
+          items: { $ref: '#/components/schemas/Exame' }
+    ClinicaCredenciada:
+      type: object
+      properties:
+        codigoClinica: { type: string }
+        cnpj: { type: string }
+        nome: { type: string }
+        uf: { type: string }
+        ativa: { type: boolean }
+    ClinicaCredenciadaList:
+      type: object
+      properties:
+        clinicas:
+          type: array
+          items: { $ref: '#/components/schemas/ClinicaCredenciada' }
+    ProfissionalCredenciado:
+      type: object
+      properties:
+        cpf: { type: string }
+        nome: { type: string }
+        conselho:
+          type: string
+          enum: [CRM, CRP]
+        numeroConselho: { type: string }
+        uf: { type: string }
+        ativo: { type: boolean }
+    ProfissionalCredenciadoList:
+      type: object
+      properties:
+        profissionais:
+          type: array
+          items: { $ref: '#/components/schemas/ProfissionalCredenciado' }
+
+    # -----------------------------------------------------------------------
+    # RENAINF — request schemas
+    # -----------------------------------------------------------------------
+    DispositivoTalonarioRequest:
+      type: object
+      required: [idDispositivo, codigoOrgaoAutuador]
+      properties:
+        idDispositivo: { type: string }
+        codigoOrgaoAutuador: { type: string }
+        descricao: { type: string }
+        lavradoOffline: { type: boolean }
+    FaixaNumeracaoAitRequest:
+      type: object
+      required: [codigoOrgaoAutuador, numeroInicial, numeroFinal]
+      properties:
+        codigoOrgaoAutuador: { type: string }
+        idDispositivo: { type: string }
+        numeroInicial: { type: string }
+        numeroFinal: { type: string }
+    AutoInfracaoRequest:
+      type: object
+      description: Criação de auto de infração (portado de InfractionNoticeRequest).
+      required:
+        [numeroAit, codigoOrgaoAutuador, agenteAutuador, infracao, veiculo]
+      properties:
+        numeroAit: { type: string }
+        codigoOrgaoAutuador: { type: string }
+        agenteAutuador:
+          type: object
+          required: [cpf, matricula]
+          properties:
+            cpf: { type: string }
+            matricula: { type: string }
+        dispositivo:
+          type: object
+          properties:
+            idDispositivo: { type: string }
+            lavradoOffline: { type: boolean }
+        infracao:
+          type: object
+          required: [codigoInfracao, dataInfracao, codigoMunicipio, local]
+          properties:
+            codigoInfracao: { type: string }
+            codigoDesdobramentoInfracao: { type: string }
+            descricaoInfracao: { type: string }
+            dataInfracao: { type: string, format: date-time }
+            codigoMunicipio: { type: string }
+            local:
+              type: object
+              properties:
+                descricao: { type: string }
+                latitude: { type: number }
+                longitude: { type: number }
+        veiculo:
+          type: object
+          required: [placa]
+          properties:
+            placa: { type: string }
+            codigoRenavam: { type: string }
+            uf: { type: string }
+            descricaoMarcaModelo: { type: string }
+        condutor:
+          type: object
+          properties:
+            abordado: { type: boolean }
+            cpf: { type: string }
+            numeroRegistro: { type: string }
+            uf: { type: string }
+            recusouAssinar: { type: boolean }
+        evidencias:
+          type: array
+          items:
+            type: object
+            properties:
+              tipo: { type: string }
+              hash: { type: string }
+              tipoConteudo: { type: string }
+              urlArmazenamento: { type: string }
+        assinaturas:
+          type: object
+          properties:
+            assinaturaAgente: { type: string }
+            assinaturaCondutor: { type: string }
+    LoteAutosInfracaoRequest:
+      type: object
+      description: Transmissão de lote de AITs lavrados offline.
+      required: [autos]
+      properties:
+        idLote: { type: string }
+        autos:
+          type: array
+          items: { $ref: '#/components/schemas/AutoInfracaoRequest' }
+    SolicitacaoCancelamentoRequest:
+      type: object
+      required: [motivo]
+      properties:
+        motivo: { type: string }
+        codigoOrgaoAutuador: { type: string }
+        assinaturaDigital: { $ref: '#/components/schemas/AssinaturaDigital' }
+    ProcessoAdministrativoRequest:
+      type: object
+      description: Abertura de autuação (processo administrativo) a partir de um AIT.
+      required: [numeroAit]
+      properties:
+        numeroAit: { type: string }
+        codigoOrgaoAutuador: { type: string }
+    NotificacaoRequest:
+      type: object
+      required: [dataNotificacao]
+      properties:
+        dataNotificacao: { type: string, format: date-time }
+        canal: { type: string }
+        enderecoDestinatario: { type: string }
+    IndicacaoCondutorRequest:
+      type: object
+      description: Indicação/identificação de condutor infrator.
+      required: [requerente, condutorIndicado, dataProtocolo]
+      properties:
+        requerente:
+          type: object
+          required: [tipoRequerente, numeroDocumento]
+          properties:
+            tipoRequerente: { $ref: '#/components/schemas/TipoRequerente' }
+            numeroDocumento: { type: string }
+            nome: { type: string }
+        condutorIndicado:
+          type: object
+          required: [cpf]
+          properties:
+            cpf: { type: string }
+            nome: { type: string }
+            numeroRegistro: { type: string }
+            uf: { type: string }
+        dataProtocolo: { type: string, format: date-time }
+        canal: { type: string }
+        anexos:
+          type: array
+          items: { $ref: '#/components/schemas/Anexo' }
+    DefesaPreviaRequest:
+      type: object
+      description: Protocolo de defesa prévia (portado de PreliminaryDefenseRequest).
+      required: [requerente, fundamentacao, dataProtocolo]
+      properties:
+        requerente:
+          type: object
+          required: [tipoRequerente, numeroDocumento]
+          properties:
+            tipoRequerente: { $ref: '#/components/schemas/TipoRequerente' }
+            numeroDocumento: { type: string }
+            nome: { type: string }
+        fundamentacao: { type: string }
+        anexos:
+          type: array
+          items: { $ref: '#/components/schemas/Anexo' }
+        dataProtocolo: { type: string, format: date-time }
+        canal: { type: string }
+    PenalidadeRequest:
+      type: object
+      description: Imposição de penalidade.
+      required: [valorMulta]
+      properties:
+        valorMulta: { type: number }
+        pontos: { type: integer }
+        dataImposicao: { type: string, format: date-time }
+        fundamentacao: { type: string }
+        assinaturaDigital: { $ref: '#/components/schemas/AssinaturaDigital' }
+    RecursoRequest:
+      type: object
+      description: Protocolo de recurso JARI ou de segunda instância (portado de AppealRequest).
+      required: [instancia, requerente, fundamentacao]
+      properties:
+        instancia: { $ref: '#/components/schemas/Instancia' }
+        idRecursoAnterior: { type: string }
+        requerente:
+          type: object
+          properties:
+            tipoRequerente: { $ref: '#/components/schemas/TipoRequerente' }
+            numeroDocumento: { type: string }
+            nome: { type: string }
+        fundamentacao: { type: string }
+        anexos:
+          type: array
+          items: { $ref: '#/components/schemas/Anexo' }
+        dataProtocolo: { type: string, format: date-time }
+        canal: { type: string }
+    JulgamentoRecursoRequest:
+      type: object
+      description: Registro do julgamento de um recurso.
+      required: [resultado]
+      properties:
+        resultado:
+          type: string
+          enum: [PROVIDO, NEGADO]
+        dataJulgamento: { type: string, format: date-time }
+        fundamentacao: { type: string }
+        assinaturaDigital: { $ref: '#/components/schemas/AssinaturaDigital' }
+    PagamentoRequest:
+      type: object
+      required: [valorPago, dataPagamento, formaPagamento, numeroComprovante]
+      properties:
+        valorPago: { type: number }
+        dataPagamento: { type: string, format: date-time }
+        formaPagamento: { type: string }
+        numeroComprovante: { type: string }
+
+    # -----------------------------------------------------------------------
+    # RENAINF — response schemas
+    # -----------------------------------------------------------------------
+    AutoInfracao:
+      type: object
+      properties:
+        protocolo: { type: string }
+        numeroAit: { type: string }
+        situacao: { $ref: '#/components/schemas/SituacaoRenainf' }
+        codigoOrgaoAutuador: { type: string }
+        codigoInfracao: { type: string }
+        dataInfracao: { type: string, format: date-time }
+        placa: { type: string }
+    ProcessoAdministrativo:
+      type: object
+      properties:
+        protocolo: { type: string }
+        idProcesso: { type: string }
+        numeroAit: { type: string }
+        situacao: { $ref: '#/components/schemas/SituacaoRenainf' }
+        codigoOrgaoAutuador: { type: string }
+    Notificacao:
+      type: object
+      properties:
+        protocolo: { type: string }
+        idNotificacao: { type: string }
+        idProcesso: { type: string }
+        situacao: { $ref: '#/components/schemas/SituacaoRenainf' }
+        dataNotificacao: { type: string, format: date-time }
+        canal: { type: string }
+    Recurso:
+      type: object
+      properties:
+        protocolo: { type: string }
+        idRecurso: { type: string }
+        idProcesso: { type: string }
+        situacao: { $ref: '#/components/schemas/SituacaoRenainf' }
+        instancia: { $ref: '#/components/schemas/Instancia' }
+        resultado:
+          type: string
+          enum: [PROVIDO, NEGADO, PENDENTE]
+    Debito:
+      type: object
+      properties:
+        idProcesso: { type: string }
+        situacao: { $ref: '#/components/schemas/SituacaoRenainf' }
+        valorMulta: { type: number }
+        valorAtualizado: { type: number }
+        dataVencimento: { type: string, format: date }
+        quitado: { type: boolean }
+    Pagamento:
+      type: object
+      properties:
+        protocolo: { type: string }
+        idPagamento: { type: string }
+        idProcesso: { type: string }
+        situacao: { $ref: '#/components/schemas/SituacaoRenainf' }
+        valorPago: { type: number }
+        dataPagamento: { type: string, format: date-time }
+        formaPagamento: { type: string }
+        numeroComprovante: { type: string }
+    DispositivoTalonario:
+      type: object
+      properties:
+        protocolo: { type: string }
+        idDispositivo: { type: string }
+        codigoOrgaoAutuador: { type: string }
+        situacao: { $ref: '#/components/schemas/SituacaoRenainf' }
+        ativo: { type: boolean }
+    FaixaNumeracaoAit:
+      type: object
+      properties:
+        protocolo: { type: string }
+        codigoOrgaoAutuador: { type: string }
+        numeroInicial: { type: string }
+        numeroFinal: { type: string }
+        situacao: { $ref: '#/components/schemas/SituacaoRenainf' }
+    SincronizacaoTalonario:
+      type: object
+      properties:
+        dataSincronizacao: { type: string, format: date-time }
+        infracoes:
+          type: array
+          items:
+            type: object
+            properties:
+              codigoInfracao: { type: string }
+              descricaoInfracao: { type: string }
+        orgaosAutuadores:
+          type: array
+          items:
+            type: object
+            properties:
+              codigoOrgaoAutuador: { type: string }
+              nome: { type: string }
+        municipios:
+          type: array
+          items:
+            type: object
+            properties:
+              codigoMunicipio: { type: string }
+              nome: { type: string }

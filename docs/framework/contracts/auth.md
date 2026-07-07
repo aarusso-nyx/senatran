@@ -55,6 +55,16 @@ curl http://localhost:3000/v1/veiculos/placa/ABC1D23 \
   -H 'x-client-cert-cn: senatran-dev-client'
 ```
 
+## Applies to both surfaces
+
+This model covers **all** endpoints — the 57 read-only WSDenatran queries **and**
+the 30 transactional RENACH/RENAINF operations. The transactional reference
+described Bearer JWT + roles; per the unification decision (`canonical-mapping.md`,
+DESIGN-DECISIONS D-0009) those are **dropped** and every endpoint authenticates
+with `x-cpf-usuario` (+ cert simulation). On write endpoints, `x-cpf-usuario` also
+identifies the operator recorded in the audit trail. An optional `Idempotency-Key`
+header is honored on writes but is not part of authentication.
+
 ## Notes for consumers
 
 - The mock never validates a real certificate chain and must never be pointed at

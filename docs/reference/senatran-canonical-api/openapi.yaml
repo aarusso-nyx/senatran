@@ -1,0 +1,700 @@
+openapi: 3.1.0
+info:
+  title: SENATRAN Canonical API - RENACH/RENAINF
+  version: 0.1.0
+  description:
+    Canonical reconstructed API for DETRAN/SENATRAN integration adapters.
+    Not an official SENATRAN/SERPRO contract.
+servers:
+  - url: https://gateway.detran.uf.gov.br/senatran-adapter/v1
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Envelope:
+      type: object
+      properties:
+        success:
+          type: boolean
+        protocol:
+          type:
+            - string
+            - 'null'
+        timestamp:
+          type: string
+          format: date-time
+        data: {}
+        warnings:
+          type: array
+        errors:
+          type: array
+    MedicalExamRequest:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      $id: https://example.local/schemas/renach/medical-exam.schema.json
+      title: RenachMedicalExamRequest
+      type: object
+      required:
+        - appointmentId
+        - clinic
+        - examiner
+        - candidate
+        - process
+        - exam
+      properties:
+        appointmentId:
+          type: string
+        clinic:
+          type: object
+          required:
+            - clinicId
+            - cnpj
+          properties:
+            clinicId:
+              type: string
+            cnpj:
+              type: string
+        examiner:
+          type: object
+          required:
+            - cpf
+            - council
+            - councilNumber
+            - uf
+          properties:
+            cpf:
+              type: string
+            council:
+              enum:
+                - CRM
+            councilNumber:
+              type: string
+            uf:
+              type: string
+        candidate:
+          type: object
+          required:
+            - cpf
+            - name
+            - birthDate
+          properties:
+            cpf:
+              type: string
+            name:
+              type: string
+            birthDate:
+              type: string
+              format: date
+        process:
+          type: object
+          required:
+            - renachNumber
+            - processType
+          properties:
+            renachNumber:
+              type: string
+            processType:
+              enum:
+                - FIRST_LICENSE
+                - RENEWAL
+                - CATEGORY_CHANGE
+                - CATEGORY_ADDITION
+            currentCategory:
+              type: string
+            requestedCategory:
+              type: string
+        exam:
+          type: object
+          required:
+            - performedAt
+            - result
+          properties:
+            performedAt:
+              type: string
+              format: date-time
+            result:
+              enum:
+                - FIT
+                - FIT_WITH_RESTRICTIONS
+                - TEMPORARILY_UNFIT
+                - UNFIT
+                - REFERRED_TO_BOARD
+                - PENDING
+            validUntil:
+              type: string
+              format: date
+            restrictions:
+              type: array
+              items:
+                type: object
+                properties:
+                  code:
+                    type: string
+                  description:
+                    type: string
+            observations:
+              type: string
+        attachments:
+          type: array
+        digitalSignature:
+          type: object
+    PsychologicalEvaluationRequest:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      $id: https://example.local/schemas/renach/psychological-evaluation.schema.json
+      title: RenachPsychologicalEvaluationRequest
+      type: object
+      required:
+        - appointmentId
+        - clinic
+        - examiner
+        - evaluation
+      properties:
+        appointmentId:
+          type: string
+        clinic:
+          type: object
+        examiner:
+          type: object
+          properties:
+            cpf:
+              type: string
+            council:
+              enum:
+                - CRP
+            councilNumber:
+              type: string
+            uf:
+              type: string
+        evaluation:
+          type: object
+          required:
+            - performedAt
+            - result
+          properties:
+            performedAt:
+              type: string
+              format: date-time
+            result:
+              enum:
+                - FIT
+                - FIT_WITH_RESTRICTIONS
+                - TEMPORARILY_UNFIT
+                - UNFIT
+                - REFERRED_TO_BOARD
+                - PENDING
+            validUntil:
+              type: string
+              format: date
+            testBattery:
+              type: array
+            observations:
+              type: string
+        digitalSignature:
+          type: object
+    InfractionNoticeRequest:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      $id: https://example.local/schemas/renainf/infraction-notice.schema.json
+      title: RenainfInfractionNoticeRequest
+      type: object
+      required:
+        - aitNumber
+        - agencyCode
+        - issuingAgent
+        - infraction
+        - vehicle
+      properties:
+        aitNumber:
+          type: string
+        agencyCode:
+          type: string
+        issuingAgent:
+          type: object
+          required:
+            - cpf
+            - registration
+          properties:
+            cpf:
+              type: string
+            registration:
+              type: string
+        device:
+          type: object
+        infraction:
+          type: object
+          required:
+            - code
+            - occurredAt
+            - municipalityCode
+            - location
+          properties:
+            code:
+              type: string
+            unfolding:
+              type: string
+            description:
+              type: string
+            occurredAt:
+              type: string
+              format: date-time
+            municipalityCode:
+              type: string
+            location:
+              type: object
+        vehicle:
+          type: object
+          required:
+            - plate
+          properties:
+            plate:
+              type: string
+            renavam:
+              type: string
+            uf:
+              type: string
+            makeModel:
+              type: string
+        driver:
+          type: object
+        evidence:
+          type: array
+        signatures:
+          type: object
+    PreliminaryDefenseRequest:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      $id: https://example.local/schemas/renainf/preliminary-defense.schema.json
+      title: RenainfPreliminaryDefenseRequest
+      type: object
+      required:
+        - submittedBy
+        - arguments
+        - submittedAt
+      properties:
+        submittedBy:
+          type: object
+          required:
+            - actorType
+            - document
+          properties:
+            actorType:
+              enum:
+                - OWNER
+                - IDENTIFIED_DRIVER
+                - LEGAL_REPRESENTATIVE
+            document:
+              type: string
+            name:
+              type: string
+        arguments:
+          type: string
+        attachments:
+          type: array
+        submittedAt:
+          type: string
+          format: date-time
+        channel:
+          type: string
+    AppealRequest:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      $id: https://example.local/schemas/renainf/appeal.schema.json
+      title: RenainfAppealRequest
+      type: object
+      required:
+        - instance
+        - submittedBy
+        - arguments
+      properties:
+        instance:
+          enum:
+            - JARI
+            - SECOND_INSTANCE
+        previousAppealId:
+          type: string
+        submittedBy:
+          type: object
+        arguments:
+          type: string
+        attachments:
+          type: array
+        submittedAt:
+          type: string
+          format: date-time
+        channel:
+          type: string
+  parameters:
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: true
+      schema:
+        type: string
+    AgencyCode:
+      name: X-Agency-Code
+      in: header
+      required: true
+      schema:
+        type: string
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema:
+        type: string
+paths:
+  /renach/processes/{renachNumber}:
+    get:
+      summary: Consultar processo RENACH
+      parameters:
+        - name: renachNumber
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/AgencyCode'
+      responses:
+        '200':
+          description: OK
+  /renach/processes/{renachNumber}/exam-eligibility:
+    post:
+      summary: Consultar elegibilidade para exame
+      parameters:
+        - name: renachNumber
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/AgencyCode'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: OK
+  /renach/accredited-clinics:
+    get:
+      summary: Listar clínicas credenciadas
+      responses:
+        '200':
+          description: OK
+  /renach/accredited-professionals:
+    get:
+      summary: Listar profissionais credenciados
+      responses:
+        '200':
+          description: OK
+  /renach/processes/{renachNumber}/appointments:
+    post:
+      summary: Criar agendamento de exame
+      parameters:
+        - name: renachNumber
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Created
+  /renach/appointments/{appointmentId}:
+    patch:
+      summary: Cancelar ou remarcar agendamento
+      parameters:
+        - name: appointmentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /renach/appointments/{appointmentId}/check-in:
+    post:
+      summary: Iniciar atendimento
+      parameters:
+        - name: appointmentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /renach/processes/{renachNumber}/medical-exams:
+    post:
+      summary: Registrar exame médico
+      parameters:
+        - name: renachNumber
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MedicalExamRequest'
+      responses:
+        '201':
+          description: Created
+  /renach/processes/{renachNumber}/psychological-evaluations:
+    post:
+      summary: Registrar avaliação psicológica
+      parameters:
+        - name: renachNumber
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PsychologicalEvaluationRequest'
+      responses:
+        '201':
+          description: Created
+  /renach/processes/{renachNumber}/exams:
+    get:
+      summary: Consultar resultados de exames
+      parameters:
+        - name: renachNumber
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /renach/exams/{examId}/rectifications:
+    post:
+      summary: Retificar exame
+      parameters:
+        - name: examId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '202':
+          description: Accepted
+  /renach/processes/{renachNumber}/medical-board-referrals:
+    post:
+      summary: Encaminhar para junta médica
+      parameters:
+        - name: renachNumber
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '202':
+          description: Accepted
+  /renach/processes/{renachNumber}/medical-board-decisions:
+    post:
+      summary: Registrar parecer de junta
+      parameters:
+        - name: renachNumber
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Created
+  /renainf/talon/devices:
+    post:
+      summary: Registrar dispositivo de talonário
+      responses:
+        '201':
+          description: Created
+  /renainf/talon/sync:
+    get:
+      summary: Sincronizar domínio operacional
+      responses:
+        '200':
+          description: OK
+  /renainf/talon/ait-number-ranges:
+    post:
+      summary: Reservar numeração de AIT
+      responses:
+        '201':
+          description: Created
+  /renainf/infraction-notices:
+    post:
+      summary: Criar AIT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InfractionNoticeRequest'
+      responses:
+        '201':
+          description: Created
+  /renainf/infraction-notices/batches:
+    post:
+      summary: Transmitir lote de AITs offline
+      responses:
+        '202':
+          description: Accepted
+  /renainf/infraction-notices/{aitNumber}:
+    get:
+      summary: Consultar AIT
+      parameters:
+        - name: aitNumber
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /renainf/infraction-notices/{aitNumber}/cancellation-requests:
+    post:
+      summary: Solicitar cancelamento do AIT
+      parameters:
+        - name: aitNumber
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '202':
+          description: Accepted
+  /renainf/administrative-cases:
+    post:
+      summary: Abrir autuação
+      responses:
+        '201':
+          description: Created
+  /renainf/administrative-cases/{caseId}/notices/autuacao:
+    post:
+      summary: Emitir notificação de autuação
+      parameters:
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Created
+  /renainf/administrative-cases/{caseId}/driver-identifications:
+    post:
+      summary: Registrar indicação de condutor
+      parameters:
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Created
+  /renainf/administrative-cases/{caseId}/preliminary-defenses:
+    post:
+      summary: Protocolar defesa prévia
+      parameters:
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PreliminaryDefenseRequest'
+      responses:
+        '201':
+          description: Created
+  /renainf/administrative-cases/{caseId}/penalties:
+    post:
+      summary: Imposição de penalidade
+      parameters:
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Created
+  /renainf/administrative-cases/{caseId}/notices/penalty:
+    post:
+      summary: Emitir notificação de penalidade
+      parameters:
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Created
+  /renainf/administrative-cases/{caseId}/appeals:
+    post:
+      summary: Protocolar recurso JARI ou segunda instância
+      parameters:
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppealRequest'
+      responses:
+        '201':
+          description: Created
+  /renainf/appeals/{appealId}/decision:
+    post:
+      summary: Registrar julgamento de recurso
+      parameters:
+        - name: appealId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Created
+  /renainf/administrative-cases/{caseId}/financial-obligation:
+    get:
+      summary: Consultar débito
+      parameters:
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /renainf/administrative-cases/{caseId}/payments:
+    post:
+      summary: Registrar pagamento
+      parameters:
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Created

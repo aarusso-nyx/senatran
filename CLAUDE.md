@@ -6,15 +6,20 @@ in sync (DEVAI Constitution, Article 23 tie-breaker ladder).
 
 ## What this project is
 
-`senatran` is a **dev-only mock services provider** for the SERPRO **WSDenatran**
-public REST API (vehicles, drivers, infractions, indicators). It exists so sibling
-repositories — **`pec`** and **`teat`** — have a valid, deterministic integration
-target during development and testing. It is **not** a production service and must
-never be pointed at real DENATRAN/SENATRAN data.
+`senatran` is a **dev-only mock services provider** for SENATRAN/DENATRAN APIs. It
+exists so sibling repositories — **`pec`** and **`teat`** — have a valid,
+deterministic integration target during development and testing. It is **not** a
+production service and must never be pointed at real DENATRAN/SENATRAN data.
 
-The contract mirrored here is the official _WS Denatran - API-Doc v1_ plus SERPRO
-public documentation. The compiled, authoritative surface lives in
-`docs/framework/contracts/openapi.yaml`.
+Two surfaces, **one convention** (all `/v1`, `x-cpf-usuario` auth,
+`{ returnCode, message }` errors, Portuguese camelCase fields):
+
+1. **Read — WSDenatran** (57 GET): vehicles, drivers, infractions, indicators, from
+   the official _WS Denatran - API-Doc v1_. → `docs/framework/contracts/openapi.yaml`.
+2. **Transactional — RENACH/RENAINF** (30): licensing-exam and infraction-lifecycle
+   workflows — stateful (state machines, idempotency, audit), ported into WSDenatran
+   conventions from `docs/reference/senatran-canonical-api/` (D-0009). →
+   `docs/framework/contracts/openapi-transactional.yaml` + `canonical-mapping.md`.
 
 ## Read these first, in this order
 

@@ -103,3 +103,29 @@ even for `.ts` sources (NodeNext/Bundler resolution).
 config + evidence chain, pinned constitution 0.3.0, governance docs, a minimal
 docs-governance site shape, and `devai doctor --adopter` kept green (6/6). Evidence
 is emitted at phase boundaries.
+
+---
+
+## D-0009 — Transactional RENACH/RENAINF unified under WSDenatran conventions
+
+**Context.** A second reference corpus (`docs/reference/senatran-canonical-api/`)
+documents 30 _transactional_ RENACH (driver-licensing exams) and RENAINF
+(infractions lifecycle) endpoints, originally in an English, Bearer-JWT,
+`Envelope`-wrapped style.
+
+**Decision.** Port those endpoints into the **WSDenatran contract conventions**
+rather than hosting a second API family. The unified surface (87 endpoints = 57
+read + 30 transactional) all shares: base `/v1`; `x-cpf-usuario` + cert-simulation
+auth (D-0004); the `{ returnCode, message }` error envelope (D-0002); and
+**Portuguese camelCase field naming** reusing WSDenatran vocabulary. Canonical
+domain error codes (`RENACH.*`/`RENAINF.*`) are carried in `message`; business-rule
+violations map to **402**. The full port is `docs/framework/contracts/
+canonical-mapping.md` + `openapi-transactional.yaml`.
+
+**Consequences.** One convention everywhere; consumers use one auth + one error
+model. The transactional endpoints are **not** thin-controllers-over-views (D-0003
+applies to reads only): they are real domain services with a state machine,
+idempotency, and audit (`renach-renainf-workflows.md`, INV-RENACH/RENAINF/IDEMP).
+Bearer JWT, the `Envelope`, and JWT roles from the reference are **dropped** from
+the external contract (retained only as internal notes). The reference corpus stays
+under `docs/reference/` as provenance.

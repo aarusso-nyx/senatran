@@ -1,0 +1,76 @@
+# Error catalog — SENATRAN mock
+
+All endpoints — read (WSDenatran) and transactional (RENACH/RENAINF) — return the
+same error envelope:
+
+```json
+{
+  "returnCode": 402,
+  "message": "RENACH.EXAMINER.NOT_ACCREDITED — Profissional não credenciado para o tipo de exame informado."
+}
+```
+
+`returnCode` echoes the HTTP status. For the transactional endpoints, the canonical
+domain error code is carried as the `message` prefix (`CODE — descrição`), so
+consumers can branch on the code while the envelope stays WSDenatran-uniform.
+
+## Status semantics (both surfaces)
+
+| HTTP | Meaning                                                                    |
+| ---- | -------------------------------------------------------------------------- |
+| 400  | Requisição inválida (parâmetro/payload obrigatório ausente ou malformado). |
+| 401  | Não autorizado (falha na autenticação do certificado ou do CPF).           |
+| 402  | Requisição falhou por regra de negócio / violação de máquina de estado.    |
+| 404  | Recurso não encontrado.                                                    |
+| 500  | Erro interno.                                                              |
+
+## RENACH domain codes
+
+| Code                                   | HTTP | When                                               |
+| -------------------------------------- | ---- | -------------------------------------------------- |
+| `RENACH.PROCESS.NOT_FOUND`             | 404  | processo RENACH inexistente.                       |
+| `RENACH.PROCESS.BLOCKED`               | 402  | processo bloqueado.                                |
+| `RENACH.PROCESS.EXPIRED`               | 402  | processo expirado.                                 |
+| `RENACH.PROCESS.INVALID_STATUS`        | 402  | transição inválida para a situação atual.          |
+| `RENACH.EXAM.INVALID_TYPE`             | 402  | tipo de exame incompatível com o tipo de processo. |
+| `RENACH.EXAM.ALREADY_RECORDED`         | 402  | exame já registrado para o processo.               |
+| `RENACH.EXAM.RESULT_NOT_ALLOWED`       | 402  | resultado não permitido no contexto.               |
+| `RENACH.EXAM.REQUIRES_BOARD`           | 402  | resultado exige junta médica.                      |
+| `RENACH.CLINIC.NOT_ACCREDITED`         | 402  | clínica não credenciada.                           |
+| `RENACH.CLINIC.INACTIVE`               | 402  | clínica inativa.                                   |
+| `RENACH.EXAMINER.NOT_ACCREDITED`       | 402  | profissional não credenciado.                      |
+| `RENACH.EXAMINER.NOT_LINKED_TO_CLINIC` | 402  | profissional não vinculado à clínica.              |
+| `RENACH.BIOMETRY.NOT_MATCHED`          | 402  | biometria não confere no check-in.                 |
+| `RENACH.SIGNATURE.INVALID`             | 402  | assinatura digital inválida.                       |
+| `RENACH.RECTIFICATION.NOT_ALLOWED`     | 402  | retificação não permitida.                         |
+
+## RENAINF domain codes
+
+| Code                                        | HTTP | When                                             |
+| ------------------------------------------- | ---- | ------------------------------------------------ |
+| `RENAINF.AIT.DUPLICATED`                    | 402  | AIT já lavrado (número duplicado).               |
+| `RENAINF.AIT.INVALID_NUMBER`                | 400  | número de AIT inválido.                          |
+| `RENAINF.AIT.INVALID_INFRACTION_CODE`       | 400  | código de infração inválido.                     |
+| `RENAINF.AIT.INVALID_AGENT`                 | 402  | agente inativo/não vinculado ao órgão.           |
+| `RENAINF.AIT.INVALID_DEVICE`                | 402  | dispositivo/talonário não homologado.            |
+| `RENAINF.AIT.OUT_OF_RANGE`                  | 402  | número fora da faixa reservada.                  |
+| `RENAINF.AIT.TRANSMISSION_EXPIRED`          | 402  | prazo de transmissão expirado.                   |
+| `RENAINF.AIT.EVIDENCE_REQUIRED`             | 402  | evidência obrigatória ausente.                   |
+| `RENAINF.AIT.CANCELLATION_NOT_ALLOWED`      | 402  | cancelamento não permitido.                      |
+| `RENAINF.CASE.NOT_FOUND`                    | 404  | processo administrativo inexistente.             |
+| `RENAINF.CASE.INVALID_STATUS`               | 402  | transição inválida para a situação do processo.  |
+| `RENAINF.NOTICE.DEADLINE_EXPIRED`           | 402  | prazo da notificação expirado.                   |
+| `RENAINF.DEFENSE.NOT_ALLOWED`               | 402  | defesa não cabível na fase atual.                |
+| `RENAINF.DEFENSE.LATE_SUBMISSION`           | 402  | defesa apresentada fora do prazo.                |
+| `RENAINF.DEFENSE.INVALID_ACTOR`             | 402  | requerente não legitimado.                       |
+| `RENAINF.APPEAL.INVALID_INSTANCE`           | 402  | instância de recurso inválida.                   |
+| `RENAINF.APPEAL.PREVIOUS_INSTANCE_REQUIRED` | 402  | recurso JARI exigido antes da segunda instância. |
+| `RENAINF.PENALTY.ALREADY_IMPOSED`           | 402  | penalidade já imposta.                           |
+| `RENAINF.PAYMENT.ALREADY_SETTLED`           | 402  | débito já quitado.                               |
+| `RENAINF.SNE.NOT_ADHERED`                   | 402  | órgão não aderente ao SNE.                       |
+
+## WSDenatran read endpoints
+
+The 57 read endpoints use the same status table. They have no domain error codes;
+`message` carries a plain description. Forced-scenario magic keys and the
+data-driven 200/404 behavior are documented in `scenarios.md`.

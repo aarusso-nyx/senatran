@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/renach/psychological-evaluation.schema.json",
+  "title": "RenachPsychologicalEvaluationRequest",
+  "type": "object",
+  "required": ["appointmentId", "clinic", "examiner", "evaluation"],
+  "properties": {
+    "appointmentId": {
+      "type": "string"
+    },
+    "clinic": {
+      "type": "object"
+    },
+    "examiner": {
+      "type": "object",
+      "properties": {
+        "cpf": {
+          "type": "string"
+        },
+        "council": {
+          "enum": ["CRP"]
+        },
+        "councilNumber": {
+          "type": "string"
+        },
+        "uf": {
+          "type": "string"
+        }
+      }
+    },
+    "evaluation": {
+      "type": "object",
+      "required": ["performedAt", "result"],
+      "properties": {
+        "performedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "result": {
+          "enum": [
+            "FIT",
+            "FIT_WITH_RESTRICTIONS",
+            "TEMPORARILY_UNFIT",
+            "UNFIT",
+            "REFERRED_TO_BOARD",
+            "PENDING"
+          ]
+        },
+        "validUntil": {
+          "type": "string",
+          "format": "date"
+        },
+        "testBattery": {
+          "type": "array"
+        },
+        "observations": {
+          "type": "string"
+        }
+      }
+    },
+    "digitalSignature": {
+      "type": "object"
+    }
+  }
+}

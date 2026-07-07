@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "1.0.0",
+  "version": "1.0.0",
+  "id": "INV-IDEMP-001",
+  "domain": "IDEMP",
+  "severity": "gate",
+  "type": "lifecycle",
+  "title": "Transactional writes are idempotent and fully audited",
+  "statement": "Every transactional write (RENACH/RENAINF POST/PATCH) is idempotent: a replay — same natural key (numeroRenach+operation, numeroAit, idProcesso+phase) or same Idempotency-Key header — returns the original result and status without creating a duplicate. Every state transition writes an audit.evento row with the payload and a SHA-256 payload hash, recording situacao_anterior/situacao_nova and the cpf_usuario. No state changes without a corresponding audit record.",
+  "rationale": "The reference architecture mandates idempotency and full auditability for transactional operations; retries are normal for real clients and must not double-apply penalties, exams, or payments.",
+  "status": "active",
+  "verification": {
+    "required_suites": ["int", "e2e"],
+    "oracle": "tests"
+  },
+  "authority": {
+    "docs": [
+      {
+        "doc": "docs/framework/arch/renach-renainf-workflows.md",
+        "anchor": "cross-cutting-behavior-server-side"
+      },
+      {
+        "doc": "docs/framework/contracts/canonical-mapping.md",
+        "anchor": "convention-unification-what-changes-vs-the-reference"
+      }
+    ]
+  },
+  "scope": {
+    "components": ["api", "renach", "renainf", "audit"],
+    "code_areas": [
+      "domain/renach/api/src/**",
+      "domain/renainf/api/src/**",
+      "domain/shared/api/src/**"
+    ]
+  },
+  "change_policy": {
+    "breaking_change_requires": ["doc_update", "test_update", "human_approval"],
+    "test_weakening_allowed": false,
+    "human_approval_required": true
+  },
+  "tags": ["idempotency", "audit", "transactional", "D-0009"]
+}

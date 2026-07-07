@@ -1,44 +1,57 @@
 # BUILD-PLAN.md — SENATRAN mock
 
 Phased implementation plan. Each phase ends at a DEVAI gate and emits an evidence
-record. Reference signal is `docs/framework/contracts/openapi.yaml`.
+record. Reference signals: `docs/framework/contracts/openapi.yaml` (read) +
+`openapi-transactional.yaml` (transactional).
 
 ## Status
 
-- **Current phase:** P1 (contract compilation) — starting.
-- **P0 (bootstrap): complete.** git + pnpm + deps; directory tree; config
-  (tsconfig, eslint, prettier, vitest, nest-cli, .env); NestJS skeleton boots and
-  `/health` reports `db: up`; full DEVAI tier3 adopter bootstrap green
-  (`devai doctor --adopter` 6/6); governance docs authored. Evidence: `EV-997185…`.
+- **P0 (bootstrap): complete.** git + pnpm + deps; dir tree; config; NestJS
+  skeleton boots (`/health` db up); DEVAI tier3 adopter green (doctor 6/6). `EV-997185…`.
+- **P1 (WSDenatran contract): complete.** `openapi.yaml` — 57 read endpoints,
+  validated; `auth.md`, `scenarios.md`, `verify-openapi.ts`.
+- **P2 (design): complete.** data-model, contract-view catalog, mock-data spec,
+  6 invariants, consolidation.
+- **Transposition (in progress).** Canonical RENACH/RENAINF corpus ported into
+  WSDenatran conventions (unified surface). Next: **P3**.
 
 ## Locked decisions
 
-pnpm 9 + Node 24 · header-simulation auth · data-driven + magic-key scenarios ·
-full DEVAI tier3 bootstrap · standalone plain `pg` · thin controllers over
-`contract.*` views. See `DESIGN-DECISIONS.md`.
+pnpm 9 + Node 24 · header-simulation auth (all endpoints) · data-driven + magic-key
+scenarios · full DEVAI tier3 bootstrap · standalone plain `pg` · thin controllers
+over `contract.*` views for reads · transactional RENACH/RENAINF unified under
+WSDenatran conventions (D-0009). See `DESIGN-DECISIONS.md`.
 
-## Surface (from the official PDF)
+## Surface — 87 endpoints under `/v1`, one convention
 
-57 GET endpoints under `/v1`: `veiculos` (20), `condutores` (12), `infracoes`
+**Read (WSDenatran, 57 GET).** `veiculos` (20), `condutores` (12), `infracoes`
 (10), `indicadores` (8), `ConsultaCSV` (2), `restricoesJudiciaisAtivas` (2),
-`rouboFurto` (2), `autorizacoesAlteracaoVeiculo` (1). Every endpoint requires
-`x-cpf-usuario`. Status codes 200/400/401/402/404/500; non-2xx =
-`{ returnCode, message }`. List endpoints paginate via `idUltimoRegistro` +
-`quantidade*`/`quantidade*Real`.
+`rouboFurto` (2), `autorizacoesAlteracaoVeiculo` (1). Cursor pagination
+(`idUltimoRegistro`). → `openapi.yaml`.
+
+**Transactional (RENACH/RENAINF, 30).** RENACH (13: processos, elegibilidade,
+agendamentos, exames médicos/psicológicos, junta, clínicas/profissionais) + RENAINF
+(17: talonário, AITs, processos administrativos, autuação, defesa, penalidade,
+recurso JARI/2ª instância, débito, pagamento). Stateful (state machines + rules
+R001–R012), idempotent, audited. → `openapi-transactional.yaml`,
+`canonical-mapping.md`, `renach-renainf-workflows.md`.
+
+**Common (both):** base `/v1`; `x-cpf-usuario` + cert sim; `{ returnCode, message }`
+on 400/401/402/404/500 (business rules → 402); Portuguese camelCase fields.
 
 ## Phases
 
-| Phase            | Tasks | Output                                                                                 | Gate            |
-| ---------------- | ----- | -------------------------------------------------------------------------------------- | --------------- |
-| **P0 Bootstrap** | 1–5   | repo, deps, dirs, governance docs, `.devai/`, NestJS boots                             | doctor 6/6 ✔    |
-| **P1 Contract**  | 6     | `openapi.yaml` (all endpoints), `auth.md`, `scenarios.md`                              | `openapi:check` |
-| **P2 Design**    | 7–9   | data model + `contract.*` view catalog + mock-data spec, consolidated                  | review          |
-| **P3 Database**  | 10    | `database/ddl/*` (tables, refs, views/matviews), seed generator, `apply.sh` runs clean | `db:reset`      |
-| **P4 Services**  | 11    | 8 thin modules + `CpfUsuarioGuard` + exception filter                                  | `pnpm check`    |
-| **P5 Tests**     | 12    | unit + db + api + e2e green; coverage gate; scorecard                                  | Cycle C         |
+| Phase            | Tasks | Output                                                                                                                            | Gate            |
+| ---------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| **P0 Bootstrap** | 1–5   | repo, deps, dirs, governance docs, `.devai/`, NestJS boots                                                                        | doctor 6/6 ✔    |
+| **P1 Contract**  | 6     | `openapi.yaml` (57 read) + `openapi-transactional.yaml` (30) + auth/scenarios/errors                                              | `openapi:check` |
+| **P2 Design**    | 7–9   | data model (read + transactional schemas) + view catalog + mock-data + workflows, consolidated                                    | review          |
+| **P3 Database**  | 10    | `database/ddl/*` (read tables/views/matviews **+** renach/renainf/audit tables) + seed generator, applies                         | `db:reset`      |
+| **P4 Services**  | 11    | 8 read modules (thin, over views) **+** renach/renainf transactional modules (state machine, idempotency, audit) + guard + filter | `pnpm check`    |
+| **P5 Tests**     | 12    | unit + db + api + e2e (incl. RENACH/RENAINF workflows) green; coverage; scorecard                                                 | Cycle C         |
 
-**Review checkpoints:** pause for human review after **P1** (contract) and after
-**P2** (consolidated design) before writing DDL and services.
+**Review checkpoints:** P1 and P2 reviewed. Transposition folds the transactional
+surface into P3–P5 (both surfaces implemented together).
 
 ## Design summary (finalized in P2 — see `docs/framework/arch/`)
 
@@ -65,8 +78,9 @@ full DEVAI tier3 bootstrap · standalone plain `pg` · thin controllers over
 - **Seeds** (`docs/framework/arch/mock-data.md`): deterministic (seeded PRNG),
   BR-valid formats with check digits, cross-linked, with documented known fixtures +
   magic-key sentinels.
-- **Invariants:** 6 reference-signal units in `docs/framework/arch/invariants/`
-  (AUTH, HTTP, API, DATA, SCEN, SEC), traced in `trace.json`.
+- **Invariants:** 9 reference-signal units in `docs/framework/arch/invariants/`
+  (AUTH, HTTP, API, DATA, SCEN, SEC + RENACH, RENAINF, IDEMP for the transactional
+  surface), traced in `trace.json`.
 
 ## Test pyramid (P5)
 

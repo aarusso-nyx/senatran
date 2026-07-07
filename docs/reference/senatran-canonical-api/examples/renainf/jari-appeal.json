@@ -1,0 +1,17 @@
+{
+  "instance": "JARI",
+  "submittedBy": {
+    "actorType": "OWNER",
+    "document": "00000000000"
+  },
+  "arguments": "Recurso contra imposição de penalidade.",
+  "attachments": [
+    {
+      "type": "PETITION",
+      "hash": "sha256",
+      "contentType": "application/pdf"
+    }
+  ],
+  "submittedAt": "2026-08-25T10:00:00-03:00",
+  "channel": "WEB_PORTAL"
+}

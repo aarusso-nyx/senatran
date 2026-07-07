@@ -13,12 +13,19 @@ reproducible integration target during development and testing.
 
 ## What it mocks
 
-The official _WS Denatran — API-Doc v1_ contract: **57 `GET` endpoints** under
-`/v1`, grouped as `veiculos`, `condutores`, `infracoes`, `indicadores`,
-`restricoesJudiciaisAtivas`, `rouboFurto`, `ConsultaCSV`, and
-`autorizacoesAlteracaoVeiculo`. Every endpoint requires the `x-cpf-usuario` header;
-non-2xx responses use the `{ returnCode, message }` envelope. The authoritative,
-compiled surface is [`docs/framework/contracts/openapi.yaml`](docs/framework/contracts/openapi.yaml).
+**87 endpoints under `/v1`, one convention** — every endpoint requires the
+`x-cpf-usuario` header and returns non-2xx as `{ returnCode, message }`
+(Portuguese camelCase fields throughout):
+
+- **Read — WSDenatran** (57 `GET`) from the official _WS Denatran — API-Doc v1_:
+  `veiculos`, `condutores`, `infracoes`, `indicadores`, `restricoesJudiciaisAtivas`,
+  `rouboFurto`, `ConsultaCSV`, `autorizacoesAlteracaoVeiculo`. →
+  [`openapi.yaml`](docs/framework/contracts/openapi.yaml).
+- **Transactional — RENACH/RENAINF** (30): driver-licensing exam and infraction
+  lifecycle workflows — stateful (state machines, idempotency, audit), ported into
+  WSDenatran conventions from the canonical reference. See
+  [`openapi-transactional.yaml`](docs/framework/contracts/openapi-transactional.yaml)
+  and [`canonical-mapping.md`](docs/framework/contracts/canonical-mapping.md).
 
 ## Stack
 

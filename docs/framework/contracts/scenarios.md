@@ -69,3 +69,29 @@ never change across reseeds:
 > The authoritative fixture list is emitted by `pnpm seed:generate` into
 > `database/seed/README.md` (P3). This document defines the **mechanism and
 > sentinels**; the seed manifest enumerates the exact generated fixtures.
+
+## 3. Transactional scenarios (RENACH / RENAINF)
+
+The transactional endpoints are stateful, so their scenarios are driven by the
+**state of the process/case** rather than magic keys. See
+`../arch/renach-renainf-workflows.md` and `errors.md`.
+
+- **Happy path** — a call valid for the current `situacao` advances the state
+  machine and returns 200/201/202 with the updated resource (and `protocolo`).
+- **Business-rule / state violation** — a call invalid for the current state or
+  breaking a rule (R001–R012) returns **402** with the domain code in `message`
+  (e.g. imposing a penalty before defense handling → `RENAINF.PENALTY.ALREADY_IMPOSED`
+  / `RENAINF.CASE.INVALID_STATUS`; second-instance before JARI →
+  `RENAINF.APPEAL.PREVIOUS_INSTANCE_REQUIRED`; unaccredited examiner →
+  `RENACH.EXAMINER.NOT_ACCREDITED`).
+- **Not found** — unknown `numeroRenach` / `numeroAit` / `idProcesso` → **404**
+  (`RENACH.PROCESS.NOT_FOUND`, `RENAINF.CASE.NOT_FOUND`).
+- **Validation** — malformed AIT number/infraction code or missing required payload
+  field → **400** (`RENAINF.AIT.INVALID_NUMBER`, `RENAINF.AIT.INVALID_INFRACTION_CODE`).
+- **Idempotent replay** — repeating a write with the same natural key or
+  `Idempotency-Key` returns the original result, not a duplicate (INV-IDEMP-001).
+
+Seed fixtures include processes/cases pre-positioned at representative states (e.g.
+a RENACH process at `AGUARDANDO_MEDICO`, a RENAINF case at `NOTIFICADO_AUTUACAO`) so
+consumers can drive each transition deterministically; the exact fixtures land in
+the generated `database/seed/README.md`.

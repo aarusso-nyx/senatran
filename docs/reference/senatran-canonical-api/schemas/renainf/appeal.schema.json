@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/renainf/appeal.schema.json",
+  "title": "RenainfAppealRequest",
+  "type": "object",
+  "required": ["instance", "submittedBy", "arguments"],
+  "properties": {
+    "instance": {
+      "enum": ["JARI", "SECOND_INSTANCE"]
+    },
+    "previousAppealId": {
+      "type": "string"
+    },
+    "submittedBy": {
+      "type": "object"
+    },
+    "arguments": {
+      "type": "string"
+    },
+    "attachments": {
+      "type": "array"
+    },
+    "submittedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "channel": {
+      "type": "string"
+    }
+  }
+}

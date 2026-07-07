@@ -1,0 +1,17 @@
+{
+  "submittedBy": {
+    "actorType": "OWNER",
+    "document": "00000000000",
+    "name": "Nome do Requerente"
+  },
+  "arguments": "Defesa apresentada por inconsistência no local da infração.",
+  "attachments": [
+    {
+      "type": "PETITION",
+      "hash": "sha256",
+      "contentType": "application/pdf"
+    }
+  ],
+  "submittedAt": "2026-07-25T12:00:00-03:00",
+  "channel": "WEB_PORTAL"
+}

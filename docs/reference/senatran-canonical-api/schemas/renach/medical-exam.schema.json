@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/renach/medical-exam.schema.json",
+  "title": "RenachMedicalExamRequest",
+  "type": "object",
+  "required": [
+    "appointmentId",
+    "clinic",
+    "examiner",
+    "candidate",
+    "process",
+    "exam"
+  ],
+  "properties": {
+    "appointmentId": {
+      "type": "string"
+    },
+    "clinic": {
+      "type": "object",
+      "required": ["clinicId", "cnpj"],
+      "properties": {
+        "clinicId": {
+          "type": "string"
+        },
+        "cnpj": {
+          "type": "string"
+        }
+      }
+    },
+    "examiner": {
+      "type": "object",
+      "required": ["cpf", "council", "councilNumber", "uf"],
+      "properties": {
+        "cpf": {
+          "type": "string"
+        },
+        "council": {
+          "enum": ["CRM"]
+        },
+        "councilNumber": {
+          "type": "string"
+        },
+        "uf": {
+          "type": "string"
+        }
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "required": ["cpf", "name", "birthDate"],
+      "properties": {
+        "cpf": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "birthDate": {
+          "type": "string",
+          "format": "date"
+        }
+      }
+    },
+    "process": {
+      "type": "object",
+      "required": ["renachNumber", "processType"],
+      "properties": {
+        "renachNumber": {
+          "type": "string"
+        },
+        "processType": {
+          "enum": [
+            "FIRST_LICENSE",
+            "RENEWAL",
+            "CATEGORY_CHANGE",
+            "CATEGORY_ADDITION"
+          ]
+        },
+        "currentCategory": {
+          "type": "string"
+        },
+        "requestedCategory": {
+          "type": "string"
+        }
+      }
+    },
+    "exam": {
+      "type": "object",
+      "required": ["performedAt", "result"],
+      "properties": {
+        "performedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "result": {
+          "enum": [
+            "FIT",
+            "FIT_WITH_RESTRICTIONS",
+            "TEMPORARILY_UNFIT",
+            "UNFIT",
+            "REFERRED_TO_BOARD",
+            "PENDING"
+          ]
+        },
+        "validUntil": {
+          "type": "string",
+          "format": "date"
+        },
+        "restrictions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "observations": {
+          "type": "string"
+        }
+      }
+    },
+    "attachments": {
+      "type": "array"
+    },
+    "digitalSignature": {
+      "type": "object"
+    }
+  }
+}

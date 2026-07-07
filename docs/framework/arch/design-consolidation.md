@@ -49,3 +49,36 @@ written. This is the record of what was checked and resolved.
   in P5.
 
 Consolidation complete — the design set is internally consistent and ready for P3.
+
+---
+
+## Addendum — canonical RENACH/RENAINF transposition
+
+A second reference corpus (`docs/reference/senatran-canonical-api/`, 30
+transactional endpoints) was folded in **after** P2. Decision D-0009: port it into
+WSDenatran conventions rather than a second API family.
+
+Artifacts added/updated: `contracts/openapi-transactional.yaml` (30 ops, validated),
+`contracts/canonical-mapping.md` (path/field/error map — the source of truth),
+`contracts/errors.md` (domain-code catalog), `arch/renach-renainf-workflows.md`
+(state machines + rules), `arch/data-model.md` (+`renach`/`renainf`/`audit`
+schemas), invariants `INV-RENACH-001`/`INV-RENAINF-001`/`INV-IDEMP-001` (+domains
+RENACH/RENAINF/IDEMP, +trace), and updates to auth/scenarios/mock-data + the
+governance docs (README, CLAUDE, AGENTS, CONTEXT, GOVERNANCE, BUILD-PLAN).
+
+Divergences from the reference, reconciled to the unification directive:
+
+| Reference                                | Ported                                               |
+| ---------------------------------------- | ---------------------------------------------------- |
+| base `/senatran-adapter/v1`              | `/v1`                                                |
+| Bearer JWT + JWT roles + `X-Agency-Code` | `x-cpf-usuario` + cert sim (roles dropped)           |
+| `Envelope {success,protocol,errors[]}`   | `{ returnCode, message }` (domain code in `message`) |
+| English field names                      | Portuguese camelCase (WSDenatran vocabulary)         |
+| required `Idempotency-Key`               | optional; natural-key dedupe                         |
+
+Key architectural note: **D-0003 (thin controllers over views) applies to the read
+surface only.** The transactional endpoints are real domain services (state
+machine + idempotency + audit); their read-back responses are still shaped by
+`contract.v_renach_*`/`contract.v_renainf_*` views. Verified: `openapi:check`
+covers both contracts (87 ops) under identical rules; `spec-validate-all` green
+(9 invariants + trace).

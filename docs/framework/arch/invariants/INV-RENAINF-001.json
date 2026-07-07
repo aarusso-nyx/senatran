@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "1.0.0",
+  "version": "1.0.0",
+  "id": "INV-RENAINF-001",
+  "domain": "RENAINF",
+  "severity": "gate",
+  "type": "state_machine",
+  "title": "RENAINF case state machine and penalty/appeal ordering",
+  "statement": "RENAINF transactional endpoints enforce the infraction case state machine (RASCUNHO → … → PENALIDADE_IMPOSTA → … → DECISAO_FINAL/ARQUIVADO) and business rules RENAINF.R001–R012. Penalty may be imposed only after autuação and preliminary-defense handling; JARI appeal must precede second-instance appeal; a defense/appeal references a single AIT/case; only legitimate actors (proprietário, condutor identificado, representante legal) may submit. Violations yield 402 with the domain code; unknown AIT/case yields 404; malformed AIT fields yield 400.",
+  "rationale": "The infraction lifecycle has strict ordering and legitimacy rules; a faithful mock must reject out-of-order penalties and appeals so consumers test the real administrative flow.",
+  "status": "active",
+  "verification": {
+    "required_suites": ["e2e", "int"],
+    "oracle": "tests"
+  },
+  "authority": {
+    "docs": [
+      {
+        "doc": "docs/framework/arch/renach-renainf-workflows.md",
+        "anchor": "renainf-infraction-lifecycle"
+      },
+      {
+        "doc": "docs/framework/contracts/errors.md",
+        "anchor": "renainf-domain-codes"
+      }
+    ]
+  },
+  "scope": {
+    "components": ["api", "renainf"],
+    "code_areas": ["domain/renainf/api/src/**", "database/ddl/**"]
+  },
+  "change_policy": {
+    "breaking_change_requires": ["doc_update", "test_update", "human_approval"],
+    "test_weakening_allowed": false,
+    "human_approval_required": true
+  },
+  "tags": ["renainf", "state-machine", "transactional", "D-0009"]
+}

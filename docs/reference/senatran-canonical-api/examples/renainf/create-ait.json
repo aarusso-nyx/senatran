@@ -1,0 +1,55 @@
+{
+  "aitNumber": "A0001001",
+  "agencyCode": "123456",
+  "issuingAgent": {
+    "cpf": "00000000000",
+    "registration": "AGT001"
+  },
+  "device": {
+    "deviceId": "ANDROID-DEVICE-ID",
+    "offlineIssued": false
+  },
+  "infraction": {
+    "code": "74550",
+    "unfolding": "0",
+    "description": "Transitar em velocidade superior à máxima permitida",
+    "occurredAt": "2026-07-06T14:30:00-03:00",
+    "municipalityCode": "3550308",
+    "location": {
+      "description": "Av. Exemplo, 1000",
+      "latitude": -23.5505,
+      "longitude": -46.6333
+    }
+  },
+  "vehicle": {
+    "plate": "ABC1D23",
+    "renavam": "00000000000",
+    "uf": "SP",
+    "makeModel": "VEICULO/EXEMPLO"
+  },
+  "driver": {
+    "approached": true,
+    "cpf": "00000000000",
+    "cnhNumber": "00000000000",
+    "uf": "SP",
+    "refusedToSign": false
+  },
+  "evidence": [
+    {
+      "type": "PHOTO",
+      "hash": "sha256",
+      "contentType": "image/jpeg",
+      "storageUrl": "s3://bucket/evidence/ait.jpg"
+    }
+  ],
+  "signatures": {
+    "agentSignature": {
+      "type": "DEVICE_CERTIFICATE",
+      "signedHash": "base64"
+    },
+    "driverSignature": {
+      "type": "TOUCH",
+      "signedHash": "base64"
+    }
+  }
+}

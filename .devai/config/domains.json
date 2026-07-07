@@ -16,6 +16,9 @@
   ],
   "client": [
     "HTTP",
-    "SCEN"
+    "SCEN",
+    "RENACH",
+    "RENAINF",
+    "IDEMP"
   ]
 }

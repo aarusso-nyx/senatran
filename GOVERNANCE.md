@@ -49,8 +49,12 @@ stay 6/6) and `pnpm devai:scorecard`.
 ## 5. Hard-fails (non-negotiable)
 
 - Weakening the `x-cpf-usuario` auth guard or the `{ returnCode, message }` error
-  envelope to pass a test.
-- Business logic added to a thin controller/service beyond a single view read.
+  envelope (either surface) to pass a test.
+- Business logic added to a **read** (WSDenatran) controller/service beyond a
+  single view read.
+- A **transactional** (RENACH/RENAINF) write that mutates state without enforcing
+  the state machine, without idempotency, or without writing an `audit.evento`
+  (INV-RENACH/RENAINF/IDEMP).
 - Pointing any config at real SENATRAN endpoints or real personal data.
 - Editing `.devai/constitution.md` or `docs/framework/schemas/` outside an
   Architect-led change.

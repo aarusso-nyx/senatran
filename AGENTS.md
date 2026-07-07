@@ -5,11 +5,16 @@ Constitution, Article 23). Either is authoritative.
 
 ## Project
 
-`senatran` is a **dev-only mock** of the SERPRO **WSDenatran** public REST API
-(vehicles/drivers/infractions/indicators), built as a deterministic integration
-target for sibling repos `pec` and `teat`. Not production. Never real data.
+`senatran` is a **dev-only mock** of SENATRAN/DENATRAN APIs, a deterministic
+integration target for sibling repos `pec` and `teat`. Not production. Never real
+data. **Two surfaces, one convention** (`/v1`, `x-cpf-usuario` auth,
+`{ returnCode, message }` errors, Portuguese camelCase):
 
-Authoritative surface: `docs/framework/contracts/openapi.yaml`.
+1. **Read — WSDenatran** (57 GET): veículos/condutores/infrações/indicadores →
+   `docs/framework/contracts/openapi.yaml`.
+2. **Transactional — RENACH/RENAINF** (30): exam + infraction workflows, stateful
+   (state machine, idempotency, audit), ported into WSDenatran conventions (D-0009)
+   → `openapi-transactional.yaml` + `canonical-mapping.md`.
 
 ## Read first
 
