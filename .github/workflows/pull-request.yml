@@ -1,0 +1,52 @@
+name: pull-request
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: senatran
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/senatran
+      DB_HOST: localhost
+      DB_PORT: '5432'
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: senatran
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # Static gates
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm openapi:check
+
+      # Determinism: regenerated views + seeds must match what's committed
+      - run: pnpm views:generate && pnpm seed:generate && git diff --exit-code database docs/framework/contracts/openapi.yaml
+
+      # Database + tiered tests
+      - run: pnpm db:reset
+      - run: pnpm test:cov
+      - run: pnpm test:integration
+      - run: pnpm test:e2e

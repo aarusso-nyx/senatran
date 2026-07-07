@@ -42,15 +42,19 @@ export class TransactionSupport {
   }
 
   /**
-   * Run a write idempotently. `escopo` is the operation, `chave` the natural key
-   * (or Idempotency-Key). A replay returns the stored {status, body} without
-   * re-running `fn`. `fn` receives the open transaction.
+   * Run a write. When the client supplied an `Idempotency-Key` (`chave`), a
+   * replay returns the stored {status, body} without re-running `fn` — safe
+   * retries. When no key is supplied (`chave` undefined), `fn` always runs, so
+   * business rules like duplicate detection (RENAINF.AIT.DUPLICATED),
+   * PENALTY.ALREADY_IMPOSED and PAYMENT.ALREADY_SETTLED fire normally. Either
+   * way `fn` runs inside one transaction.
    */
   async idempotent<T>(
     escopo: string,
-    chave: string,
+    chave: string | undefined,
     fn: (trx: Transaction) => Promise<{ status: number; body: T }>,
   ): Promise<{ status: number; body: T }> {
+    if (!chave) return this.db.tx(fn);
     return this.db.tx(async (trx) => {
       const existing = await trx.query<{ status_http: number; resultado: T }>(
         'select status_http, resultado from audit.idempotencia where escopo = $1 and chave = $2',

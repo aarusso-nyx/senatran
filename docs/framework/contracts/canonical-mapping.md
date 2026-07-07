@@ -10,16 +10,16 @@ authoritative mapping; the ported contract lives in
 
 ## Convention unification (what changes vs. the reference)
 
-| Aspect       | Reference (canonical)                                                | Ported (WSDenatran-unified)                                                                                         |
-| ------------ | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Base path    | `/senatran-adapter/v1`                                               | **`/v1`** (single surface)                                                                                          |
-| Auth         | Bearer JWT + `X-Agency-Code` + `X-Correlation-Id`                    | **`x-cpf-usuario`** header (+ cert simulation `x-client-cert-cn`), per `auth.md`                                    |
-| Success body | `Envelope { success, protocol, data, … }`                            | **raw JSON** object, as WSDenatran returns                                                                          |
-| Error body   | `Envelope { success:false, errors:[{code,message,field,severity}] }` | **`{ returnCode, message }`** (WSDenatran). The canonical error code is carried in `message` as `CODE — descrição`. |
-| Status codes | 200/201/202                                                          | 200 (read), 201 (create), 202 (async); errors 400/401/402/404/500. Business-rule violations → **402**.              |
-| Field names  | English camelCase (`renachNumber`, `aitNumber`, `processType`)       | **Portuguese camelCase**, reusing WSDenatran vocabulary (`numeroRenach`, `numeroAit`, `tipoProcesso`)               |
-| RBAC / roles | JWT roles (MEDICAL_EXAMINER, …)                                      | not in the contract; `x-cpf-usuario` identifies the operator. Roles retained as internal notes only.                |
-| Idempotency  | required `Idempotency-Key` header                                    | honored if sent (optional); writes also dedupe on natural keys (`numeroAit`, `numeroRenach`).                       |
+| Aspect       | Reference (canonical)                                                | Ported (WSDenatran-unified)                                                                                                               |
+| ------------ | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Base path    | `/senatran-adapter/v1`                                               | **`/v1`** (single surface)                                                                                                                |
+| Auth         | Bearer JWT + `X-Agency-Code` + `X-Correlation-Id`                    | **`x-cpf-usuario`** header (+ cert simulation `x-client-cert-cn`), per `auth.md`                                                          |
+| Success body | `Envelope { success, protocol, data, … }`                            | **raw JSON** object, as WSDenatran returns                                                                                                |
+| Error body   | `Envelope { success:false, errors:[{code,message,field,severity}] }` | **`{ returnCode, message }`** (WSDenatran). The canonical error code is carried in `message` as `CODE — descrição`.                       |
+| Status codes | 200/201/202                                                          | 200 (read), 201 (create), 202 (async); errors 400/401/402/404/500. Business-rule violations → **402**.                                    |
+| Field names  | English camelCase (`renachNumber`, `aitNumber`, `processType`)       | **Portuguese camelCase**, reusing WSDenatran vocabulary (`numeroRenach`, `numeroAit`, `tipoProcesso`)                                     |
+| RBAC / roles | JWT roles (MEDICAL_EXAMINER, …)                                      | not in the contract; `x-cpf-usuario` identifies the operator. Roles retained as internal notes only.                                      |
+| Idempotency  | required `Idempotency-Key` header                                    | optional `Idempotency-Key` (safe retries); without it, a repeated create/action triggers its business rule (e.g. `AIT.DUPLICATED`) → 402. |
 
 Internal behaviors the reference mandates and we keep server-side (not part of the
 external contract): payload-hash + audit event on every state transition,

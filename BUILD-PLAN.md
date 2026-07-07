@@ -11,9 +11,16 @@ record. Reference signals: `docs/framework/contracts/openapi.yaml` (read) +
 - **P1 (WSDenatran contract): complete.** `openapi.yaml` — 57 read endpoints,
   validated; `auth.md`, `scenarios.md`, `verify-openapi.ts`.
 - **P2 (design): complete.** data-model, contract-view catalog, mock-data spec,
-  6 invariants, consolidation.
-- **Transposition (in progress).** Canonical RENACH/RENAINF corpus ported into
-  WSDenatran conventions (unified surface). Next: **P3**.
+  9 invariants, consolidation.
+- **Transposition: complete.** Canonical RENACH/RENAINF ported into WSDenatran
+  conventions (unified 87-endpoint surface).
+- **P3 (database): complete.** DDL (schemas, tables, 57+6 views), deterministic
+  seed generator (field-for-field contract fidelity), `db:reset` clean. `EV-91ecf8…`.
+- **P4 (services): complete.** 88 routes; global guard + filter + read seam; 8 thin
+  read modules; RENACH/RENAINF transactional modules (state machine, idempotency,
+  audit). `EV-ace00b…`.
+- **P5 (tests): complete.** 122 tests — unit 63 (88% line coverage, gate ≥70%),
+  integration 8, e2e 51. CI workflow added. All phases done.
 
 ## Locked decisions
 

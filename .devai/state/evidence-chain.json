@@ -1,5 +1,5 @@
 {
-  "head": "23dff5de2d5dc95d890ea090df09adb6314b9cd930677c594ef5eaced14aff3b",
+  "head": "2a571c2b8b1079aeda868470403fd6ab744bec24b2b6c10a0cbe02aabf9f24ff",
   "records": [
     {
       "schemaVersion": "1.0.0",
@@ -112,6 +112,48 @@
       ],
       "previous_run_hash": "ff539acbd83d8ba52eae05c98d18d1c8168631dcb2c473b97f072d7ca984e53a",
       "manifest_hash": "23dff5de2d5dc95d890ea090df09adb6314b9cd930677c594ef5eaced14aff3b"
+    },
+    {
+      "schemaVersion": "1.0.0",
+      "id": "EV-ed1ca55879fc5cec",
+      "timestamp": "2026-07-07T03:09:48.245Z",
+      "actor": "claude-code",
+      "actor_role": "harness",
+      "action": "tests.implement",
+      "status": "completed",
+      "context": {
+        "repo_root": ".",
+        "git": {
+          "head_sha": "c2ddba4314f584d144123ac46c6b926847a9d35d",
+          "dirty_files": [
+            "BUILD-PLAN.md",
+            "docs/framework/arch/invariants/INV-IDEMP-001.json",
+            "docs/framework/arch/renach-renainf-workflows.md",
+            "docs/framework/contracts/canonical-mapping.md",
+            "docs/framework/contracts/scenarios.md",
+            "domain/renach/api/src/renach.service.ts",
+            "domain/renainf/api/src/renainf.service.ts",
+            "domain/shared/api/src/common/transaction-support.service.ts",
+            "vitest.config.ts",
+            ".github/",
+            "domain/renach/api/src/renach.service.spec.ts",
+            "domain/renainf/api/src/renainf.service.spec.ts",
+            "domain/shared/api/src/common/cpf-usuario.guard.spec.ts",
+            "domain/shared/api/src/common/read.service.spec.ts",
+            "domain/shared/api/src/common/scenario.service.spec.ts",
+            "domain/shared/api/src/common/transaction-support.service.spec.ts",
+            "domain/shared/api/src/common/wsdenatran-exception.filter.spec.ts",
+            "domain/veiculos/api/src/veiculos.controller.spec.ts",
+            "tests/"
+          ]
+        }
+      },
+      "artifacts": [],
+      "notes": [
+        "P5: 122 tests (unit 63 @88% line cov gate>=70, integration 8, e2e 51); all 9 invariant trace files exist; fixed idempotency semantics (explicit key only; duplicates 402); CI workflow added; doctor 6/6"
+      ],
+      "previous_run_hash": "23dff5de2d5dc95d890ea090df09adb6314b9cd930677c594ef5eaced14aff3b",
+      "manifest_hash": "2a571c2b8b1079aeda868470403fd6ab744bec24b2b6c10a0cbe02aabf9f24ff"
     }
   ]
 }

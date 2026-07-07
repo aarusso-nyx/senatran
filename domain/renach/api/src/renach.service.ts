@@ -92,7 +92,7 @@ export class RenachService {
   ): Promise<{ status: number; body: unknown }> {
     return this.tx.idempotent(
       `renach.agendamento:${numeroRenach}`,
-      idemKey ?? `${numeroRenach}:${JSON.stringify(body)}`,
+      idemKey,
       async (trx) => {
         const proc = await this.processo(trx, numeroRenach);
         const id = randomUUID();
@@ -156,60 +156,56 @@ export class RenachService {
     idemKey?: string,
   ): Promise<{ status: number; body: unknown }> {
     const escopo = `renach.exame.${tipo}:${numeroRenach}`;
-    return this.tx.idempotent(
-      escopo,
-      idemKey ?? `${numeroRenach}:${tipo}`,
-      async (trx) => {
-        const proc = await this.processo(trx, numeroRenach);
-        const situacao = proc.situacao as string;
-        if (['APROVADO', 'REJEITADO'].includes(situacao)) {
-          throw businessError(
-            'RENACH.PROCESS.INVALID_STATUS',
-            `Processo em ${situacao} não aceita novo exame.`,
-          );
-        }
-        const exame = (body.exame ?? body.avaliacao ?? {}) as Row;
-        await this.validateClinicaProfissional(trx, body, tipo);
-        const resultado = (exame.resultado as string) ?? 'PENDENTE';
-        const id = randomUUID();
-        await trx.query(
-          'insert into renach.exame (id, numero_renach, tipo_exame, resultado, codigo_clinica, cpf_examinador, data_realizacao, data_validade, payload) values ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb)',
-          [
-            id,
-            numeroRenach,
-            tipo,
-            resultado,
-            (body.clinica as Row)?.codigoClinica ?? null,
-            (body.examinador as Row)?.cpf ?? null,
-            exame.dataRealizacao ?? null,
-            exame.dataValidade ?? null,
-            JSON.stringify(body),
-          ],
+    return this.tx.idempotent(escopo, idemKey, async (trx) => {
+      const proc = await this.processo(trx, numeroRenach);
+      const situacao = proc.situacao as string;
+      if (['APROVADO', 'REJEITADO'].includes(situacao)) {
+        throw businessError(
+          'RENACH.PROCESS.INVALID_STATUS',
+          `Processo em ${situacao} não aceita novo exame.`,
         );
-        // R008: INAPTO blocks; ENCAMINHADO_JUNTA branches; else advance.
-        let nova = 'EXAME_REGISTRADO';
-        if (resultado === 'INAPTO') nova = 'REJEITADO';
-        else if (resultado === 'ENCAMINHADO_JUNTA') nova = 'EXAME_REGISTRADO';
-        else if (tipo === 'PSICOLOGICO') nova = 'EM_ANALISE';
-        const resp = {
-          idExame: id,
+      }
+      const exame = (body.exame ?? body.avaliacao ?? {}) as Row;
+      await this.validateClinicaProfissional(trx, body, tipo);
+      const resultado = (exame.resultado as string) ?? 'PENDENTE';
+      const id = randomUUID();
+      await trx.query(
+        'insert into renach.exame (id, numero_renach, tipo_exame, resultado, codigo_clinica, cpf_examinador, data_realizacao, data_validade, payload) values ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb)',
+        [
+          id,
           numeroRenach,
-          tipoExame: tipo,
+          tipo,
           resultado,
-          situacao: nova,
-          protocolo: protocolo(),
-        };
-        await this.advance(
-          trx,
-          numeroRenach,
-          situacao,
-          nova,
-          `exame.${tipo.toLowerCase()}.registrar`,
-          resp,
-        );
-        return { status: 201, body: resp };
-      },
-    );
+          (body.clinica as Row)?.codigoClinica ?? null,
+          (body.examinador as Row)?.cpf ?? null,
+          exame.dataRealizacao ?? null,
+          exame.dataValidade ?? null,
+          JSON.stringify(body),
+        ],
+      );
+      // R008: INAPTO blocks; ENCAMINHADO_JUNTA branches; else advance.
+      let nova = 'EXAME_REGISTRADO';
+      if (resultado === 'INAPTO') nova = 'REJEITADO';
+      else if (resultado === 'ENCAMINHADO_JUNTA') nova = 'EXAME_REGISTRADO';
+      else if (tipo === 'PSICOLOGICO') nova = 'EM_ANALISE';
+      const resp = {
+        idExame: id,
+        numeroRenach,
+        tipoExame: tipo,
+        resultado,
+        situacao: nova,
+        protocolo: protocolo(),
+      };
+      await this.advance(
+        trx,
+        numeroRenach,
+        situacao,
+        nova,
+        `exame.${tipo.toLowerCase()}.registrar`,
+        resp,
+      );
+      return { status: 201, body: resp };
+    });
   }
 
   private async validateClinicaProfissional(
@@ -292,7 +288,7 @@ export class RenachService {
   ): Promise<{ status: number; body: unknown }> {
     return this.tx.idempotent(
       `renach.junta.encaminhar:${numeroRenach}`,
-      `${numeroRenach}`,
+      undefined,
       async (trx) => {
         const proc = await this.processo(trx, numeroRenach);
         const id = randomUUID();
@@ -325,7 +321,7 @@ export class RenachService {
   ): Promise<{ status: number; body: unknown }> {
     return this.tx.idempotent(
       `renach.junta.parecer:${numeroRenach}`,
-      `${numeroRenach}`,
+      undefined,
       async (trx) => {
         const proc = await this.processo(trx, numeroRenach);
         const id = randomUUID();

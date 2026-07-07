@@ -34,7 +34,7 @@ export class RenainfService {
     key?: string,
   ): Promise<{ status: number; body: unknown }> {
     const id = (body.idDispositivo as string) ?? randomUUID();
-    return this.tx.idempotent('renainf.dispositivo', key ?? id, async (trx) => {
+    return this.tx.idempotent('renainf.dispositivo', key, async (trx) => {
       await trx.query(
         'insert into renainf.dispositivo (id_dispositivo, codigo_orgao_autuador, homologado, ativo, payload) values ($1,$2,true,true,$3::jsonb) on conflict (id_dispositivo) do nothing',
         [id, body.codigoOrgaoAutuador ?? null, JSON.stringify(body)],
@@ -91,7 +91,7 @@ export class RenainfService {
       throw badRequest(
         'RENAINF.AIT.INVALID_INFRACTION_CODE — código de infração obrigatório.',
       );
-    return this.tx.idempotent('renainf.ait', key ?? numeroAit, async (trx) => {
+    return this.tx.idempotent('renainf.ait', key, async (trx) => {
       const dup = await trx.query(
         'select 1 from renainf.ait where numero_ait = $1',
         [numeroAit],
@@ -206,46 +206,42 @@ export class RenainfService {
     key?: string,
   ): Promise<{ status: number; body: unknown }> {
     const numeroAit = body.numeroAit as string;
-    return this.tx.idempotent(
-      'renainf.processo.abrir',
-      key ?? numeroAit,
-      async (trx) => {
-        const ait = await trx.query<Row>(
-          'select id from renainf.ait where numero_ait = $1',
-          [numeroAit],
-        );
-        if (!ait.rows[0])
-          throw notFound('RENAINF.AIT.INVALID_NUMBER — AIT não encontrado.');
-        const id = randomUUID();
-        await trx.query(
-          "insert into renainf.processo (id, ait_id, situacao, payload) values ($1,$2,'AUTUACAO_ABERTA',$3::jsonb)",
-          [
-            id,
-            ait.rows[0].id,
-            JSON.stringify({
-              idProcesso: id,
-              numeroAit,
-              situacao: 'AUTUACAO_ABERTA',
-            }),
-          ],
-        );
-        const resp = {
-          idProcesso: id,
-          numeroAit,
-          situacao: 'AUTUACAO_ABERTA',
-          protocolo: protocolo(),
-        };
-        await this.tx.audit(trx, {
-          dominio: DOM,
-          entidade: 'renainf.processo',
-          entidadeId: id,
-          tipoEvento: 'processo.abrir',
-          situacaoNova: 'AUTUACAO_ABERTA',
-          payload: resp,
-        });
-        return { status: 201, body: resp };
-      },
-    );
+    return this.tx.idempotent('renainf.processo.abrir', key, async (trx) => {
+      const ait = await trx.query<Row>(
+        'select id from renainf.ait where numero_ait = $1',
+        [numeroAit],
+      );
+      if (!ait.rows[0])
+        throw notFound('RENAINF.AIT.INVALID_NUMBER — AIT não encontrado.');
+      const id = randomUUID();
+      await trx.query(
+        "insert into renainf.processo (id, ait_id, situacao, payload) values ($1,$2,'AUTUACAO_ABERTA',$3::jsonb)",
+        [
+          id,
+          ait.rows[0].id,
+          JSON.stringify({
+            idProcesso: id,
+            numeroAit,
+            situacao: 'AUTUACAO_ABERTA',
+          }),
+        ],
+      );
+      const resp = {
+        idProcesso: id,
+        numeroAit,
+        situacao: 'AUTUACAO_ABERTA',
+        protocolo: protocolo(),
+      };
+      await this.tx.audit(trx, {
+        dominio: DOM,
+        entidade: 'renainf.processo',
+        entidadeId: id,
+        tipoEvento: 'processo.abrir',
+        situacaoNova: 'AUTUACAO_ABERTA',
+        payload: resp,
+      });
+      return { status: 201, body: resp };
+    });
   }
 
   async notificarAutuacao(
@@ -268,7 +264,7 @@ export class RenainfService {
   ): Promise<{ status: number; body: unknown }> {
     return this.tx.idempotent(
       `renainf.indicacao:${idProcesso}`,
-      idProcesso,
+      undefined,
       async (trx) => {
         await this.processo(trx, idProcesso);
         await trx.query(
@@ -310,7 +306,7 @@ export class RenainfService {
       );
     return this.tx.idempotent(
       `renainf.defesa:${idProcesso}`,
-      key ?? idProcesso,
+      key,
       async (trx) => {
         const proc = await this.processo(trx, idProcesso);
         if (
@@ -361,7 +357,7 @@ export class RenainfService {
   ): Promise<{ status: number; body: unknown }> {
     return this.tx.idempotent(
       `renainf.penalidade:${idProcesso}`,
-      key ?? idProcesso,
+      key,
       async (trx) => {
         const proc = await this.processo(trx, idProcesso);
         const sit = proc.situacao as string;
@@ -441,7 +437,7 @@ export class RenainfService {
     const instancia = body.instancia as string;
     return this.tx.idempotent(
       `renainf.recurso.${instancia}:${idProcesso}`,
-      key ?? `${idProcesso}:${instancia}`,
+      key,
       async (trx) => {
         const proc = await this.processo(trx, idProcesso);
         if (instancia === 'SEGUNDA_INSTANCIA') {
@@ -495,7 +491,7 @@ export class RenainfService {
   ): Promise<{ status: number; body: unknown }> {
     return this.tx.idempotent(
       `renainf.julgamento:${idRecurso}`,
-      idRecurso,
+      undefined,
       async (trx) => {
         const rec = await trx.query<Row>(
           'select processo_id, instancia from renainf.recurso where id = $1',
@@ -553,7 +549,7 @@ export class RenainfService {
   ): Promise<{ status: number; body: unknown }> {
     return this.tx.idempotent(
       `renainf.pagamento:${idProcesso}`,
-      key ?? idProcesso,
+      key,
       async (trx) => {
         await this.processo(trx, idProcesso);
         const deb = await trx.query<Row>(
@@ -604,7 +600,7 @@ export class RenainfService {
   ): Promise<{ status: number; body: unknown }> {
     return this.tx.idempotent(
       `renainf.${tipoEvento}:${idProcesso}`,
-      `${idProcesso}:${to}`,
+      undefined,
       async (trx) => {
         const proc = await this.processo(trx, idProcesso);
         if (!from.includes(proc.situacao as string))

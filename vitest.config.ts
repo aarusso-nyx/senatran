@@ -20,7 +20,11 @@ const isCoverageRun =
 const enforceCoverageThresholds = tier === 'unit';
 
 const includeByTier: Record<typeof tier, string[]> = {
-  unit: ['domain/**/api/src/**/*.spec.ts', 'apps/**/*.spec.ts'],
+  unit: [
+    'domain/**/api/src/**/*.spec.ts',
+    'apps/**/*.spec.ts',
+    'tests/unit/**/*.spec.ts',
+  ],
   integration: ['tests/integration/**/*.integration.spec.ts'],
   e2e: ['tests/e2e/**/*.e2e.spec.ts'],
   real: ['tests/real/**/*.real.spec.ts'],
@@ -54,8 +58,9 @@ export default defineConfig({
         '**/main.ts',
       ],
       reportsDirectory: '.devai/state/coverage/tier-' + tier,
+      // Aligned with .devai/config/thresholds.json (unit tier only).
       thresholds: enforceCoverageThresholds
-        ? { lines: 80, branches: 80, functions: 80, statements: 80 }
+        ? { lines: 70, branches: 60, functions: 70, statements: 70 }
         : { lines: 0, branches: 0, functions: 0, statements: 0 },
     },
   },

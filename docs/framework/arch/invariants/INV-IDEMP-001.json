@@ -6,7 +6,7 @@
   "severity": "gate",
   "type": "lifecycle",
   "title": "Transactional writes are idempotent and fully audited",
-  "statement": "Every transactional write (RENACH/RENAINF POST/PATCH) is idempotent: a replay — same natural key (numeroRenach+operation, numeroAit, idProcesso+phase) or same Idempotency-Key header — returns the original result and status without creating a duplicate. Every state transition writes an audit.evento row with the payload and a SHA-256 payload hash, recording situacao_anterior/situacao_nova and the cpf_usuario. No state changes without a corresponding audit record.",
+  "statement": "Transactional writes (RENACH/RENAINF POST/PATCH) are idempotent when the client supplies an Idempotency-Key header: a replay with the same key returns the original {status, body} without creating a duplicate. Without an Idempotency-Key the write runs its full logic, so duplicate/already-done business rules fire on a plain replay (RENAINF.AIT.DUPLICATED, RENAINF.PENALTY.ALREADY_IMPOSED, RENAINF.PAYMENT.ALREADY_SETTLED → 402). Every state transition writes an audit.evento row with the payload and a SHA-256 payload hash, recording situacao_anterior/situacao_nova and the cpf_usuario. No state changes without a corresponding audit record.",
   "rationale": "The reference architecture mandates idempotency and full auditability for transactional operations; retries are normal for real clients and must not double-apply penalties, exams, or payments.",
   "status": "active",
   "verification": {

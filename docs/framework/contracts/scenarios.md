@@ -88,8 +88,10 @@ The transactional endpoints are stateful, so their scenarios are driven by the
   (`RENACH.PROCESS.NOT_FOUND`, `RENAINF.CASE.NOT_FOUND`).
 - **Validation** — malformed AIT number/infraction code or missing required payload
   field → **400** (`RENAINF.AIT.INVALID_NUMBER`, `RENAINF.AIT.INVALID_INFRACTION_CODE`).
-- **Idempotent replay** — repeating a write with the same natural key or
-  `Idempotency-Key` returns the original result, not a duplicate (INV-IDEMP-001).
+- **Idempotent replay** — repeating a write with the same `Idempotency-Key`
+  header returns the original result, not a duplicate. Without the header, a
+  repeated create/action instead triggers its business rule (e.g.
+  `RENAINF.AIT.DUPLICATED`, `RENAINF.PENALTY.ALREADY_IMPOSED`) → 402 (INV-IDEMP-001).
 
 Seed fixtures include processes/cases pre-positioned at representative states (e.g.
 a RENACH process at `AGUARDANDO_MEDICO`, a RENAINF case at `NOTIFICADO_AUTUACAO`) so

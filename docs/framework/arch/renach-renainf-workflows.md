@@ -96,9 +96,12 @@ Extra guards: `AIT.DUPLICATED` (409→ mapped 402), `AIT.OUT_OF_RANGE`,
 
 ## Cross-cutting behavior (server-side)
 
-- **Idempotency** — writes dedupe on their natural key (`numeroRenach`+operation,
-  `numeroAit`, `idProcesso`+phase) and honor an optional `Idempotency-Key` header;
-  a replay returns the original result, not a duplicate.
+- **Idempotency** — writes are idempotent **only** under an explicit
+  `Idempotency-Key` header: a replay with the same key returns the original
+  result. Without the header the write runs its full logic, so duplicate/
+  already-done business rules (`AIT.DUPLICATED`, `PENALTY.ALREADY_IMPOSED`,
+  `PAYMENT.ALREADY_SETTLED`) fire on a plain replay. This keeps safe retries and
+  business-duplicate detection from conflicting.
 - **Audit** — every state transition writes an `audit.evento` row with the payload
   and a SHA-256 payload hash (`architecture.md` auditability principle).
 - **Async** — operations the reference marks 202 (retificações, encaminhamento à
