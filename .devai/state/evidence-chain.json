@@ -1,5 +1,5 @@
 {
-  "head": "9a82293a8da3a07b5a3cbca8fe70a98148bdb8af26cf479c04f05d31d97e79fc",
+  "head": "ff539acbd83d8ba52eae05c98d18d1c8168631dcb2c473b97f072d7ca984e53a",
   "records": [
     {
       "schemaVersion": "1.0.0",
@@ -22,6 +22,60 @@
       ],
       "previous_run_hash": null,
       "manifest_hash": "9a82293a8da3a07b5a3cbca8fe70a98148bdb8af26cf479c04f05d31d97e79fc"
+    },
+    {
+      "schemaVersion": "1.0.0",
+      "id": "EV-a75d1371e62d2333",
+      "timestamp": "2026-07-07T02:14:28.360Z",
+      "actor": "claude-code",
+      "actor_role": "harness",
+      "action": "design.transpose",
+      "status": "completed",
+      "context": {
+        "repo_root": ".",
+        "git": {
+          "head_sha": "90e76a65e88d8ba5c648134e7a976c3f9d954157",
+          "dirty_files": []
+        }
+      },
+      "artifacts": [],
+      "notes": [
+        "Transposed canonical RENACH/RENAINF (30 endpoints) into WSDenatran conventions; 87 ops unified; doctor 6/6; committed 90e76a6"
+      ],
+      "previous_run_hash": "9a82293a8da3a07b5a3cbca8fe70a98148bdb8af26cf479c04f05d31d97e79fc",
+      "manifest_hash": "d872e04dc5b8f59a7f197d8e428c6218060281306a0e9a176ccabffd38305716"
+    },
+    {
+      "schemaVersion": "1.0.0",
+      "id": "EV-91ecf8be3d7fe14e",
+      "timestamp": "2026-07-07T02:35:57.999Z",
+      "actor": "claude-code",
+      "actor_role": "harness",
+      "action": "db.implement",
+      "status": "completed",
+      "context": {
+        "repo_root": ".",
+        "git": {
+          "head_sha": "90e76a65e88d8ba5c648134e7a976c3f9d954157",
+          "dirty_files": [
+            ".devai/state/evidence-chain.json",
+            "DESIGN-DECISIONS.md",
+            "docs/framework/arch/contract-views.md",
+            "docs/framework/arch/data-model.md",
+            "package.json",
+            "database/",
+            "tools/scripts/generate-seed.ts",
+            "tools/scripts/generate-views.ts",
+            "tools/scripts/lib/"
+          ]
+        }
+      },
+      "artifacts": [],
+      "notes": [
+        "P3: DDL (schemas/tables/57+6 views) applies clean; deterministic seed generator; payloads match contract field-for-field (Veiculo 95/95, Condutor 115/115, Infracao 114/114); audit 102/102 hash-correct; db:reset green"
+      ],
+      "previous_run_hash": "d872e04dc5b8f59a7f197d8e428c6218060281306a0e9a176ccabffd38305716",
+      "manifest_hash": "ff539acbd83d8ba52eae05c98d18d1c8168631dcb2c473b97f072d7ca984e53a"
     }
   ]
 }

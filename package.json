@@ -26,6 +26,7 @@
     "db:apply": "bash database/apply.sh",
     "db:reset": "bash database/apply.sh --full --sample",
     "db:seed": "bash database/seed.sh",
+    "views:generate": "tsx tools/scripts/generate-views.ts",
     "seed:generate": "tsx tools/scripts/generate-seed.ts",
     "devai": "node ../devai/packages/cli/dist/bin.js",
     "devai:doctor": "node ../devai/packages/cli/dist/bin.js doctor --adopter --repo-root .",

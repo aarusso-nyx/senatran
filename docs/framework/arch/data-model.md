@@ -69,8 +69,14 @@ descriptions; used by the seed generator and by contract-view joins.
 
 ## Entity tables (`senatran.*`)
 
-Full column lists = the corresponding OpenAPI schema. Below: primary/lookup keys
-and relationships only.
+> **Storage realization (D-0010).** Each read entity table is `<key columns…>,
+payload jsonb` — `payload` is the exact contract object (generated from the
+> OpenAPI schema); the key columns below are indexed lookups extracted from it.
+> The per-table "full column list" is therefore the payload's fields (= the OpenAPI
+> schema); only the key columns are physical scalar columns. Contract views select
+> `payload` and wrap the envelope.
+
+Below: primary/lookup keys and relationships only.
 
 ### `veiculo` ← schema `Veiculo` (+ indicator & CSV-derived flags)
 

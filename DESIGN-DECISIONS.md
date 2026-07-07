@@ -129,3 +129,30 @@ idempotency, and audit (`renach-renainf-workflows.md`, INV-RENACH/RENAINF/IDEMP)
 Bearer JWT, the `Envelope`, and JWT roles from the reference are **dropped** from
 the external contract (retained only as internal notes). The reference corpus stays
 under `docs/reference/` as provenance.
+
+---
+
+## D-0010 — Entities stored as `payload jsonb` + extracted key columns
+
+**Context.** The contract objects are large (Veiculo ~90 fields, Condutor ~120).
+Modeling every field as a normalized column plus a hand-written
+`jsonb_build_object` of ~90 keys per view is impractical and drift-prone at this
+scale, and the reference mock (`mock/postgres/schema.sql`) itself stores
+`payload jsonb`.
+
+**Decision (refines D-0003 storage, not its principle).** Each read entity table
+is `<key columns…>, payload jsonb`, where `payload` is the **exact** contract
+object produced by the deterministic seed generator from the OpenAPI schema
+(camelCase keys, source typos, código+descrição pairs resolved at generation time).
+Key columns (placa, chassi, codigo_renavam, cpf, numero_registro, …) are indexed
+for lookup — extracted from the payload by the generator (or Postgres
+`GENERATED ALWAYS AS (payload->>'…')`). Contract views stay thin: base views expose
+`payload`; per-endpoint views wrap the list envelope / bare object / boolean /
+indicator via `jsonb_build_object` + `jsonb_agg`, filtered by the key column. The
+service still runs `select payload from contract.v_<endpoint> where <key>=$1`.
+
+**Consequences.** Fidelity is guaranteed (payload is generated from the contract),
+DDL and views are small and uniform, and shaping stays in SQL — D-0003's principle
+(thin controllers over prepared views) is preserved. Transactional entities use the
+same shape plus mutable `situacao`/FK columns the services update. Reference tables
+(`ref_*`) remain normalized (small, hand-seeded, used by the generator).
