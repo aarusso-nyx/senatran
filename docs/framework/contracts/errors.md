@@ -80,13 +80,23 @@ Actively enforced by the services (each has a test): all `*.NOT_FOUND`,
 `RENAINF.AIT.OUT_OF_RANGE`, `RENAINF.CASE.INVALID_STATUS`,
 `RENAINF.DEFENSE.NOT_ALLOWED`, `RENAINF.PENALTY.ALREADY_IMPOSED`,
 `RENAINF.APPEAL.INVALID_INSTANCE`/`PREVIOUS_INSTANCE_REQUIRED`,
-`RENAINF.PAYMENT.ALREADY_SETTLED`.
-
-Modeled in this catalog but **not yet enforced** (they need deadline / SNE
-schema fields that the mock does not carry): `RENACH.BIOMETRY.NOT_MATCHED`,
-`RENACH.SIGNATURE.INVALID`, `RENAINF.AIT.TRANSMISSION_EXPIRED`,
+`RENAINF.PAYMENT.ALREADY_SETTLED`, `RENAINF.AIT.TRANSMISSION_EXPIRED`,
 `RENAINF.NOTICE.DEADLINE_EXPIRED`, `RENAINF.DEFENSE.LATE_SUBMISSION`,
-`RENAINF.SNE.NOT_ADHERED`. These remain documented for consumers and are safe to
+`RENAINF.SNE.NOT_ADHERED`.
+
+The four deadline/SNE rules are enforced **deterministically** — each compares a
+date supplied in the request body against a deadline derived from stored dates
+(never the wall clock), so results are reproducible. Triggers (also published in
+`database/seed/manifest.json`): a `dataTransmissao` more than 30 days after the
+infraction → `TRANSMISSION_EXPIRED`; a `dataNotificacao` more than 30 days after
+the infraction → `NOTICE.DEADLINE_EXPIRED`; a defesa `dataProtocolo` after the
+case `prazoDefesa` (notice + 30 days; fixture `A0001001` carries a past one) →
+`DEFENSE.LATE_SUBMISSION`; `canalNotificacao: SNE` on the non-adherent fixture
+device `DEV-0001` → `SNE.NOT_ADHERED`.
+
+Modeled in this catalog but **not yet enforced** (they need biometric/signature
+verification data the mock does not carry): `RENACH.BIOMETRY.NOT_MATCHED`,
+`RENACH.SIGNATURE.INVALID`. These remain documented for consumers and are safe to
 add when the corresponding state is introduced.
 
 ## WSDenatran read endpoints

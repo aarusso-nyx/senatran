@@ -47,4 +47,8 @@ export class AutoInfracaoDto {
   @IsOptional() @IsObject() condutor?: object;
   @IsOptional() @IsArray() evidencias?: unknown[];
   @IsOptional() @IsObject() assinaturas?: object;
+  /** Date the AIT is transmitted to RENAINF; drives TRANSMISSION_EXPIRED. */
+  @IsOptional() @IsString() dataTransmissao?: string;
+  /** Intended notice channel; 'SNE' requires an SNE-adherent órgão. */
+  @IsOptional() @IsString() canalNotificacao?: string;
 }

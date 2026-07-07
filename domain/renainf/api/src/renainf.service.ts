@@ -20,6 +20,18 @@ const ATOR_VALIDO = [
   'REPRESENTANTE_LEGAL',
 ];
 
+// Statutory windows (days). The mock enforces these deterministically by
+// comparing a date supplied in the request body against a deadline derived from
+// stored dates — never against the wall clock — so results are reproducible.
+const PRAZO_DIAS = { transmissao: 30, notificacao: 30, defesa: 30 };
+const DIA_MS = 86_400_000;
+const iso = (v: unknown): string => new Date(v as string).toISOString();
+const addDias = (isoDate: string, dias: number): string =>
+  new Date(new Date(isoDate).getTime() + dias * DIA_MS).toISOString();
+/** True when `acao` (an ISO date) falls strictly after `prazo`. */
+const foraDoPrazo = (acao: string, prazo: string): boolean =>
+  new Date(acao).getTime() > new Date(prazo).getTime();
+
 /** RENAINF transactional service — case state machine + defesa/penalidade/recurso ordering (INV-RENAINF-001). */
 @Injectable()
 export class RenainfService {
@@ -101,10 +113,11 @@ export class RenainfService {
           'RENAINF.AIT.DUPLICATED',
           'AIT já lavrado (número duplicado).',
         );
+      const querSne = body.canalNotificacao === 'SNE';
       const device = body.dispositivo as Row | undefined;
       if (device?.idDispositivo) {
         const d = await trx.query<Row>(
-          'select homologado, ativo from renainf.dispositivo where id_dispositivo = $1',
+          'select homologado, ativo, sne_aderido from renainf.dispositivo where id_dispositivo = $1',
           [device.idDispositivo],
         );
         if (!d.rows[0] || !d.rows[0].homologado || !d.rows[0].ativo)
@@ -112,8 +125,28 @@ export class RenainfService {
             'RENAINF.AIT.INVALID_DEVICE',
             'Dispositivo/talonário não homologado.',
           );
+        if (querSne && !d.rows[0].sne_aderido)
+          throw businessError(
+            'RENAINF.SNE.NOT_ADHERED',
+            'Órgão não aderente ao SNE para notificação eletrônica.',
+          );
       }
       const inf = body.infracao as Row;
+      // Transmission window: the AIT must reach RENAINF within N days of the
+      // infraction. Fires only when the órgão states its dataTransmissao.
+      const dataTransmissao = body.dataTransmissao as string | undefined;
+      if (
+        dataTransmissao &&
+        inf.dataInfracao &&
+        foraDoPrazo(
+          iso(dataTransmissao),
+          addDias(iso(inf.dataInfracao), PRAZO_DIAS.transmissao),
+        )
+      )
+        throw businessError(
+          'RENAINF.AIT.TRANSMISSION_EXPIRED',
+          `Prazo de transmissão (${PRAZO_DIAS.transmissao} dias após a infração) expirado.`,
+        );
       // Codes that mandate photographic evidence.
       const REQUIRES_EVIDENCE = new Set(['74550', '74630', '60503', '55414']);
       const evidencias = Array.isArray(body.evidencias) ? body.evidencias : [];
@@ -283,15 +316,63 @@ export class RenainfService {
 
   async notificarAutuacao(
     idProcesso: string,
-    _body: Row,
+    body: Row,
   ): Promise<{ status: number; body: unknown }> {
-    return this.transition(
-      idProcesso,
-      ['AUTUACAO_ABERTA'],
-      'AGUARDANDO_DEFESA_PREVIA',
-      'notificacao.autuacao',
-      201,
-      () => ({ idProcesso, tipoNotificacao: 'AUTUACAO' }),
+    return this.tx.idempotent(
+      `renainf.notificacao.autuacao:${idProcesso}`,
+      undefined,
+      async (trx) => {
+        const proc = await this.processo(trx, idProcesso);
+        if (proc.situacao !== 'AUTUACAO_ABERTA')
+          throw businessError(
+            'RENAINF.CASE.INVALID_STATUS',
+            `Transição inválida a partir de ${proc.situacao}.`,
+          );
+        // Notice window: autuação must be notified within N days of the
+        // infraction. Enforced only when dataNotificacao is supplied; when it
+        // is, it also anchors the defense deadline stored on the case.
+        const dataNotificacao = body.dataNotificacao as string | undefined;
+        let prazoDefesa: string | null = null;
+        if (dataNotificacao) {
+          const a = await trx.query<Row>(
+            'select a.data_infracao from renainf.ait a join renainf.processo p on p.ait_id = a.id where p.id = $1',
+            [idProcesso],
+          );
+          const dataInfracao = a.rows[0]?.data_infracao;
+          if (
+            dataInfracao &&
+            foraDoPrazo(
+              iso(dataNotificacao),
+              addDias(iso(dataInfracao), PRAZO_DIAS.notificacao),
+            )
+          )
+            throw businessError(
+              'RENAINF.NOTICE.DEADLINE_EXPIRED',
+              `Prazo de notificação (${PRAZO_DIAS.notificacao} dias após a infração) expirado.`,
+            );
+          prazoDefesa = addDias(iso(dataNotificacao), PRAZO_DIAS.defesa);
+        }
+        const resp = {
+          idProcesso,
+          tipoNotificacao: 'AUTUACAO',
+          situacao: 'AGUARDANDO_DEFESA_PREVIA',
+          protocolo: protocolo(),
+        };
+        await trx.query(
+          "update renainf.processo set situacao = $2, prazo_defesa = coalesce($3, prazo_defesa), payload = jsonb_set(payload, '{situacao}', to_jsonb($2::text)) where id = $1",
+          [idProcesso, 'AGUARDANDO_DEFESA_PREVIA', prazoDefesa],
+        );
+        await this.tx.audit(trx, {
+          dominio: DOM,
+          entidade: 'renainf.processo',
+          entidadeId: idProcesso,
+          tipoEvento: 'notificacao.autuacao',
+          situacaoAnterior: 'AUTUACAO_ABERTA',
+          situacaoNova: 'AGUARDANDO_DEFESA_PREVIA',
+          payload: resp,
+        });
+        return { status: 201, body: resp };
+      },
     );
   }
 
@@ -359,6 +440,17 @@ export class RenainfService {
             `Defesa não cabível na situação ${proc.situacao}.`,
           );
         }
+        // Timeliness: when the case carries a defense deadline, a defense
+        // protocolled after it is intempestive.
+        if (
+          proc.prazo_defesa &&
+          body.dataProtocolo &&
+          foraDoPrazo(iso(body.dataProtocolo), iso(proc.prazo_defesa))
+        )
+          throw businessError(
+            'RENAINF.DEFENSE.LATE_SUBMISSION',
+            'Defesa prévia apresentada fora do prazo.',
+          );
         await trx.query(
           'insert into renainf.defesa (processo_id, tipo_requerente, numero_documento, fundamentacao, payload) values ($1,$2,$3,$4,$5::jsonb)',
           [

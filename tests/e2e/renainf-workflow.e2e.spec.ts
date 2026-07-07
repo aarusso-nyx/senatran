@@ -220,3 +220,79 @@ describe('renainf lifecycle (INV-RENAINF-001)', () => {
     expect(res.body.message).toContain('RENAINF.PAYMENT.ALREADY_SETTLED');
   });
 });
+
+// Deadline (transmission/notice/defense) and SNE-adherence rules. These fire
+// deterministically: every check compares a date supplied in the request body
+// against a deadline derived from stored dates, never the wall clock.
+describe('renainf deadline & SNE rules (INV-RENAINF-001)', () => {
+  let seq = 0;
+  const freshAit = () => 'DL' + Date.now().toString().slice(-7) + seq++;
+  const openCase = async (ait: string): Promise<string> => {
+    await post('/v1/renainf/autosInfracao', validAit(ait));
+    const res = await post('/v1/renainf/processosAdministrativos', {
+      numeroAit: ait,
+    });
+    return res.body.idProcesso as string;
+  };
+
+  it('SNE channel on a non-adherent órgão (DEV-0001) → 402 RENAINF.SNE.NOT_ADHERED', async () => {
+    const res = await post('/v1/renainf/autosInfracao', {
+      ...validAit(freshAit()),
+      dispositivo: { idDispositivo: 'DEV-0001' },
+      canalNotificacao: 'SNE',
+    });
+    expect(res.status).toBe(402);
+    expect(res.body.message).toContain('RENAINF.SNE.NOT_ADHERED');
+  });
+
+  it('AIT transmitted past the window → 402 RENAINF.AIT.TRANSMISSION_EXPIRED', async () => {
+    // infraction 2026-01-01, transmitted 2026-03-15 (> 30 days later).
+    const res = await post('/v1/renainf/autosInfracao', {
+      ...validAit(freshAit()),
+      dataTransmissao: '2026-03-15T10:00:00Z',
+    });
+    expect(res.status).toBe(402);
+    expect(res.body.message).toContain('RENAINF.AIT.TRANSMISSION_EXPIRED');
+  });
+
+  it('on-time transmission still succeeds → 201', async () => {
+    const res = await post('/v1/renainf/autosInfracao', {
+      ...validAit(freshAit()),
+      dataTransmissao: '2026-01-20T10:00:00Z',
+    });
+    expect(res.status).toBe(201);
+  });
+
+  it('autuação notified past the window → 402 RENAINF.NOTICE.DEADLINE_EXPIRED', async () => {
+    const idProcesso = await openCase(freshAit());
+    const res = await post(
+      `/v1/renainf/processosAdministrativos/${idProcesso}/notificacoes/autuacao`,
+      { dataNotificacao: '2026-03-15T10:00:00Z' },
+    );
+    expect(res.status).toBe(402);
+    expect(res.body.message).toContain('RENAINF.NOTICE.DEADLINE_EXPIRED');
+  });
+
+  it('defesa after the case deadline → 402 RENAINF.DEFENSE.LATE_SUBMISSION', async () => {
+    const idProcesso = await openCase(freshAit());
+    // notify on time (2026-01-15) → defense deadline = 2026-02-14.
+    const notif = await post(
+      `/v1/renainf/processosAdministrativos/${idProcesso}/notificacoes/autuacao`,
+      { dataNotificacao: '2026-01-15T10:00:00Z' },
+    );
+    expect(notif.status).toBe(201);
+    const res = await post(
+      `/v1/renainf/processosAdministrativos/${idProcesso}/defesasPrevias`,
+      {
+        requerente: {
+          tipoRequerente: 'PROPRIETARIO',
+          numeroDocumento: '52998224725',
+        },
+        fundamentacao: 'Defesa intempestiva.',
+        dataProtocolo: '2026-06-01T12:00:00Z',
+      },
+    );
+    expect(res.status).toBe(402);
+    expect(res.body.message).toContain('RENAINF.DEFENSE.LATE_SUBMISSION');
+  });
+});

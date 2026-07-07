@@ -422,6 +422,7 @@ let fixAit:
       codigoOrgaoAutuador: string;
       placa: string;
       codigoInfracao: string;
+      prazoDefesa: string;
     }
   | undefined;
 
@@ -1243,12 +1244,20 @@ const auditEvt = (
 }
 {
   const parts: string[] = ['-- SENATRAN mock seed — RENAINF (generated).'];
-  const disp = Array.from({ length: 15 }, (_, i) => ({
-    id: 'DEV-' + String(i + 1).padStart(4, '0'),
-    org: rng.pick(ORGAOS_AUTUADOR).codigo,
-    hom: rng.bool(0.85),
-    ativo: rng.bool(0.9),
-  }));
+  const disp = Array.from({ length: 15 }, (_, i) => {
+    const org = rng.pick(ORGAOS_AUTUADOR).codigo;
+    const homRaw = rng.bool(0.85);
+    const ativoRaw = rng.bool(0.9);
+    // DEV-0001 is a guaranteed usable device whose órgão is NOT SNE-adherent
+    // (fixture for RENAINF.SNE.NOT_ADHERED); every other device adheres.
+    return {
+      id: 'DEV-' + String(i + 1).padStart(4, '0'),
+      org,
+      hom: i === 0 ? true : homRaw,
+      ativo: i === 0 ? true : ativoRaw,
+      sne: i !== 0,
+    };
+  });
   parts.push(
     insert(
       'renainf.dispositivo',
@@ -1257,6 +1266,7 @@ const auditEvt = (
         'codigo_orgao_autuador',
         'homologado',
         'ativo',
+        'sne_aderido',
         'payload',
       ],
       disp.map((d) => [
@@ -1264,11 +1274,13 @@ const auditEvt = (
         sqlStr(d.org),
         sqlBool(d.hom),
         sqlBool(d.ativo),
+        sqlBool(d.sne),
         sqlJson({
           idDispositivo: d.id,
           codigoOrgaoAutuador: d.org,
           homologado: d.hom,
           ativo: d.ativo,
+          sneAderido: d.sne,
         }),
       ]),
     ),
@@ -1312,6 +1324,15 @@ const auditEvt = (
     // payload situacao with this column); distinct from the case lifecycle sit.
     const aitStatus =
       a.sit === 'AUTUACAO_ABERTA' ? 'VALIDADO' : 'AUTUACAO_ABERTA';
+    const dataInfracaoAit = dateTime(rng, 2024, 2025);
+    // A0001001's case carries a (past) defense deadline = infraction + 30d, so
+    // siblings can drive RENAINF.DEFENSE.LATE_SUBMISSION against the seeded case.
+    const prazoDefesa =
+      a.ait === 'A0001001'
+        ? new Date(
+            new Date(dataInfracaoAit).getTime() + 30 * 86_400_000,
+          ).toISOString()
+        : null;
     if (a.ait === 'A0001001')
       fixAit = {
         numeroAit: a.ait,
@@ -1320,6 +1341,7 @@ const auditEvt = (
         codigoOrgaoAutuador: org.codigo,
         placa: v.placa,
         codigoInfracao: codInf,
+        prazoDefesa: prazoDefesa as string,
       };
     aitRows.push([
       sqlStr(aid),
@@ -1328,7 +1350,7 @@ const auditEvt = (
       sqlStr(aitStatus),
       sqlStr(v.placa),
       sqlStr(codInf),
-      sqlStr(dateTime(rng, 2024, 2025)),
+      sqlStr(dataInfracaoAit),
       sqlStr(cpf(rng)),
       sqlStr(rng.pick(disp).id),
       sqlJson(aitPayload),
@@ -1342,6 +1364,7 @@ const auditEvt = (
       sqlStr(a.pid),
       sqlStr(aid),
       sqlStr(a.sit),
+      prazoDefesa === null ? 'null' : sqlStr(prazoDefesa),
       sqlJson(procPayload),
     ]);
     auditEvt(
@@ -1391,7 +1414,7 @@ const auditEvt = (
   parts.push(
     insert(
       'renainf.processo',
-      ['id', 'ait_id', 'situacao', 'payload'],
+      ['id', 'ait_id', 'situacao', 'prazo_defesa', 'payload'],
       procRows,
     ),
   );
@@ -1497,7 +1520,9 @@ const auditEvt = (
     },
     renainf: {
       ait: fixAit,
-      note: 'GET /v1/renainf/autosInfracao/{numeroAit} returns `situacao` (the AIT-record status); `situacaoProcesso` is the administrative-case lifecycle state.',
+      dispositivoNaoAderenteSne: 'DEV-0001',
+      prazosDias: { transmissao: 30, notificacao: 30, defesa: 30 },
+      note: 'GET /v1/renainf/autosInfracao/{numeroAit} returns `situacao` (the AIT-record status); `situacaoProcesso` is the administrative-case lifecycle state. Deadline 402s are deterministic (body date vs a derived/stored deadline, no wall clock): post an AutoInfracao with a late `dataTransmissao` for AIT.TRANSMISSION_EXPIRED; notify autuação with a late `dataNotificacao` for NOTICE.DEADLINE_EXPIRED; a defesa with `dataProtocolo` after the case `prazoDefesa` gives DEFENSE.LATE_SUBMISSION (fixture A0001001 carries a past prazoDefesa); an AutoInfracao with `canalNotificacao: SNE` on device DEV-0001 gives SNE.NOT_ADHERED.',
     },
     counts: {
       veiculos: vehicles.length,

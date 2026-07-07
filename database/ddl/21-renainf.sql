@@ -5,6 +5,7 @@ create table renainf.dispositivo (
   codigo_orgao_autuador text not null,
   homologado            boolean not null default true,
   ativo                 boolean not null default true,
+  sne_aderido           boolean not null default true, -- órgão aderente ao SNE
   payload               jsonb not null default '{}'::jsonb
 );
 
@@ -31,10 +32,11 @@ create table renainf.ait (
 create index idx_renainf_ait_placa on renainf.ait (placa);
 
 create table renainf.processo (
-  id        uuid primary key default uuid_generate_v4(),
-  ait_id    uuid not null references renainf.ait(id),
-  situacao  text not null default 'AUTUACAO_ABERTA',
-  payload   jsonb not null default '{}'::jsonb
+  id           uuid primary key default uuid_generate_v4(),
+  ait_id       uuid not null references renainf.ait(id),
+  situacao     text not null default 'AUTUACAO_ABERTA',
+  prazo_defesa timestamptz, -- deadline for a tempestive prévia defense (set on notice)
+  payload      jsonb not null default '{}'::jsonb
 );
 create index idx_renainf_processo_ait on renainf.processo (ait_id);
 

@@ -140,9 +140,16 @@
       "situacaoProcesso": "NOTIFICADO_AUTUACAO",
       "codigoOrgaoAutuador": "447010",
       "placa": "EXD4A36",
-      "codigoInfracao": "56355"
+      "codigoInfracao": "56355",
+      "prazoDefesa": "2024-08-31T11:57:00.000Z"
     },
-    "note": "GET /v1/renainf/autosInfracao/{numeroAit} returns `situacao` (the AIT-record status); `situacaoProcesso` is the administrative-case lifecycle state."
+    "dispositivoNaoAderenteSne": "DEV-0001",
+    "prazosDias": {
+      "transmissao": 30,
+      "notificacao": 30,
+      "defesa": 30
+    },
+    "note": "GET /v1/renainf/autosInfracao/{numeroAit} returns `situacao` (the AIT-record status); `situacaoProcesso` is the administrative-case lifecycle state. Deadline 402s are deterministic (body date vs a derived/stored deadline, no wall clock): post an AutoInfracao with a late `dataTransmissao` for AIT.TRANSMISSION_EXPIRED; notify autuação with a late `dataNotificacao` for NOTICE.DEADLINE_EXPIRED; a defesa with `dataProtocolo` after the case `prazoDefesa` gives DEFENSE.LATE_SUBMISSION (fixture A0001001 carries a past prazoDefesa); an AutoInfracao with `canalNotificacao: SNE` on device DEV-0001 gives SNE.NOT_ADHERED."
   },
   "counts": {
     "veiculos": 120,
