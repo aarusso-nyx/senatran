@@ -297,6 +297,16 @@ function condutorCtx(rng: Rng, d: Driver): Record<string, unknown> {
     dataCursoTmf: course(),
     dataCursoReciclagemInfrator: course(),
     dataCursoAtualizacaoRenovacaoCnh: course(),
+    // Course UFs pinned to the driver's jurisdiction (coherent with muni/uf).
+    ufCursoTpp: muni.uf,
+    ufCursoTe: muni.uf,
+    ufCursoTcp: muni.uf,
+    ufCursoTve: muni.uf,
+    ufCursoTci: muni.uf,
+    ufCursoTmt: muni.uf,
+    ufCursoTmf: muni.uf,
+    ufCursoReciclagemInfrator: muni.uf,
+    ufCursoAtualizacaoRenovacaoCnh: muni.uf,
     ...endereco(rng, muni),
   };
 }
@@ -340,6 +350,7 @@ function veiculoCtx(rng: Rng, v: Vehicle): Record<string, unknown> {
     codigoMunicipioEmplacamento: muni.codigo,
     descricaoMunicipioEmplacamento: muni.descricao,
     ufJurisdicao: muni.uf,
+    ufFaturado: muni.uf,
     dataEmissaoCrv: dateTime(rng, anoFab, 2025),
     situacao: rng.bool(0.9) ? 'CIRCULACAO' : 'BAIXADO',
     procedencia: rng.pick(PROCEDENCIAS),
@@ -374,6 +385,15 @@ function infracaoCtx(
     descricaoMunicipioInfracao: muni.descricao,
     codigoMunicipioEmplacamento: muni.codigo,
     descricaoMunicipioEmplacamento: muni.descricao,
+    // Secondary UFs anchored to the emplacamento município so the whole record
+    // agrees (jurisdição, emplacamento informado, CNH expedition, pagamento).
+    getufJurisdicaoVeiculo: muni.uf,
+    getufEmplacamentoInformada: muni.uf,
+    ufExpedicaoCnhCondutor: muni.uf,
+    ufExpedicaoCnhRealCondutor: muni.uf,
+    ufExpedicaoCnhPontuada: muni.uf,
+    ufOrigemDesvinculacao: muni.uf,
+    ufPagamento: muni.uf,
     valorIntegralInfracao: rng.pick([88.38, 130.16, 195.23, 293.47]),
     medicaoReal: rng.int(60, 140),
     limitePermitido: 60,

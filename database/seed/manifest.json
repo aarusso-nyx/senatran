@@ -124,13 +124,13 @@
     },
     "clinicaCredenciada": {
       "codigoClinica": "RS-CLINIC-0001",
-      "cnpj": "46931757000108",
-      "uf": "PR"
+      "cnpj": "93773621000199",
+      "uf": "MA"
     },
     "examinadorCredenciado": {
-      "cpf": "89177194659",
+      "cpf": "60240903315",
       "conselho": "CRM",
-      "uf": "PR"
+      "uf": "MA"
     }
   },
   "renainf": {
@@ -138,9 +138,9 @@
       "numeroAit": "A0001001",
       "situacao": "AUTUACAO_ABERTA",
       "situacaoProcesso": "NOTIFICADO_AUTUACAO",
-      "codigoOrgaoAutuador": "999999",
-      "placa": "SPF9V26",
-      "codigoInfracao": "70006"
+      "codigoOrgaoAutuador": "447010",
+      "placa": "EXD4A36",
+      "codigoInfracao": "56355"
     },
     "note": "GET /v1/renainf/autosInfracao/{numeroAit} returns `situacao` (the AIT-record status); `situacaoProcesso` is the administrative-case lifecycle state."
   },
