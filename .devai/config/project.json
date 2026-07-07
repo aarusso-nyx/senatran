@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "1.0.0",
+  "project_type": "runtime-host",
+  "name": "senatran",
+  "profile": "tier3",
+  "repo": {
+    "kind": "application"
+  },
+  "constitution": {
+    "version": "0.3.0"
+  },
+  "docs": {
+    "builder": "docusaurus"
+  },
+  "round_skills": {
+    "build_command": "pnpm build",
+    "lint_command": "pnpm lint",
+    "test_commands": {
+      "unit": "pnpm test:unit",
+      "integration": "pnpm test:integration",
+      "e2e": "pnpm test:e2e",
+      "ci": "pnpm test:ci"
+    },
+    "mutation_command": null
+  },
+  "devai_version": "0.0.0"
+}

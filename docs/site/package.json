@@ -1,0 +1,20 @@
+{
+  "name": "senatran-docs",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Docusaurus documentation site for the SENATRAN mock (DEVAI docs-governance host).",
+  "scripts": {
+    "start": "docusaurus start",
+    "build": "docusaurus build",
+    "serve": "docusaurus serve"
+  },
+  "dependencies": {
+    "@docusaurus/core": "^3.7.0",
+    "@docusaurus/preset-classic": "^3.7.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "engines": {
+    "node": ">=24 <25"
+  }
+}

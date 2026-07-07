@@ -1,0 +1,27 @@
+{
+  "head": "9a82293a8da3a07b5a3cbca8fe70a98148bdb8af26cf479c04f05d31d97e79fc",
+  "records": [
+    {
+      "schemaVersion": "1.0.0",
+      "id": "EV-997185890a2d7d9d",
+      "timestamp": "2026-07-07T00:53:08.735Z",
+      "actor": "claude-code",
+      "actor_role": "harness",
+      "action": "harness.bootstrap",
+      "status": "completed",
+      "context": {
+        "repo_root": ".",
+        "git": {
+          "head_sha": null,
+          "dirty_files": []
+        }
+      },
+      "artifacts": [],
+      "notes": [
+        "P0 bootstrap"
+      ],
+      "previous_run_hash": null,
+      "manifest_hash": "9a82293a8da3a07b5a3cbca8fe70a98148bdb8af26cf479c04f05d31d97e79fc"
+    }
+  ]
+}

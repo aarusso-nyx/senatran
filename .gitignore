@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Test / coverage
+coverage/
+.devai/state/coverage/
+
+# DEVAI mutable state (config is tracked; volatile state is not)
+.devai/state/sensor-readings/**/*.json
+.devai/state/inventory/
+.devai/state/agent-runs/
+.devai/state/llm-usage.jsonl
+
+# Logs / OS
+*.log
+.DS_Store

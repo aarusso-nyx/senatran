@@ -1,0 +1,6 @@
+node_modules/
+dist/
+coverage/
+.devai/
+docs/site/
+pnpm-lock.yaml

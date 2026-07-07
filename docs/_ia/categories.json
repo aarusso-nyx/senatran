@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "1.0.0",
+  "round": "P0",
+  "constitution": "0.3.0",
+  "decisions_in_force": ["A", "B", "C"],
+  "root_files": {
+    "CONSTITUTION.md": {
+      "publish": true,
+      "source_stub": "docs/framework/constitution.md",
+      "section": "framework",
+      "notes": "Constitution pointer; canonical source is the sibling DEVAI checkout."
+    },
+    "README.md": { "publish": false },
+    "CONTEXT.md": { "publish": false }
+  },
+  "categories": {
+    "framework/arch": { "from": "arch", "section": "framework" },
+    "framework/contracts": { "from": "contracts", "section": "framework" },
+    "framework/schemas": { "from": "schemas", "section": "framework" },
+    "framework/product": { "from": "product", "section": "framework" },
+    "meta/adr": { "from": "adr", "section": "meta" },
+    "meta/ops": { "from": "ops", "section": "meta" },
+    "meta/gov": { "from": "gov", "section": "meta" }
+  },
+  "collapsed_sections": {
+    "adopters": {
+      "reason": "senatran is a terminal dev-only mock; no third-party adopters.",
+      "decision": "A",
+      "sunset_trigger": "if senatran is ever consumed as a framework, un-collapse §5"
+    }
+  },
+  "unmapped": [],
+  "unpublished": ["work"],
+  "build_substrate": ["site"]
+}
