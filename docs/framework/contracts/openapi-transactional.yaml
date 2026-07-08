@@ -54,6 +54,40 @@ paths:
   # RENACH
   # ---------------------------------------------------------------------------
   /renach/processos:
+    get:
+      tags: [renachProcessos]
+      operationId: consultarProcessosRenach
+      summary: Consulta processos RENACH ativos por CPF
+      description: >-
+        Lista os processos RENACH ativos (situação não terminal) do candidato,
+        opcionalmente filtrados por `tipoProcesso`. Permite recuperar o
+        `numeroRenach` do processo que motivou `RENACH.PROCESS.ALREADY_OPEN`.
+        Extensão WSDenatran (sem equivalente no corpus canônico); ver
+        canonical-mapping.md.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: cpf
+          in: query
+          required: true
+          description: CPF do candidato
+          schema: { type: string }
+        - name: tipoProcesso
+          in: query
+          required: false
+          description: Filtra por tipo de processo
+          schema: { $ref: '#/components/schemas/TipoProcesso' }
+      responses:
+        '200':
+          description: OK. Lista de processos ativos (possivelmente vazia).
+          content:
+            application/json:
+              schema:
+                { $ref: '#/components/schemas/ProcessoRenachListResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
     post:
       tags: [renachProcessos]
       operationId: abrirProcessoRenach
@@ -1589,6 +1623,24 @@ components:
           cpf: '52998224725'
           nome: MARIA SILVA SANTOS
           dataNascimento: '1985-03-14'
+    ProcessoRenachListResponse:
+      type: object
+      properties:
+        processos:
+          type: array
+          items: { $ref: '#/components/schemas/ProcessoRenach' }
+      example:
+        processos:
+          - protocolo: RENACH-2026-000123
+            numeroRenach: RS123456789
+            situacao: AGUARDANDO_MEDICO
+            tipoProcesso: RENOVACAO
+            categoriaAtual: B
+            categoriaPretendida: B
+            condutor:
+              cpf: '52998224725'
+              nome: MARIA SILVA SANTOS
+              dataNascimento: '1985-03-14'
     ElegibilidadeExameResponse:
       type: object
       properties:

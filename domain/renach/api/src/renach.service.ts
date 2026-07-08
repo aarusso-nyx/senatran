@@ -6,6 +6,7 @@ import {
 } from '../../../shared/api/src/database/database.js';
 import { TransactionSupport } from '../../../shared/api/src/common/transaction-support.service.js';
 import {
+  badRequest,
   businessError,
   notFound,
 } from '../../../shared/api/src/common/wsdenatran-error.js';
@@ -94,6 +95,31 @@ export class RenachService {
       });
       return { status: 201, body: resp };
     });
+  }
+
+  /**
+   * List a candidate's ACTIVE RENACH processes (situação not terminal),
+   * optionally filtered by tipoProcesso. Lets a caller recover the
+   * `numeroRenach` of the process that triggered RENACH.PROCESS.ALREADY_OPEN —
+   * the state machine (which situação counts as active) stays owned here, not
+   * in the caller. WSDenatran extension; see canonical-mapping.md.
+   */
+  async consultarProcessos(
+    cpf: string,
+    tipoProcesso?: string,
+  ): Promise<unknown> {
+    if (!cpf) throw badRequest('Parâmetro obrigatório: cpf.');
+    const params: unknown[] = [cpf];
+    let sql =
+      "select jsonb_set(payload, '{situacao}', to_jsonb(situacao)) as payload " +
+      "from renach.processo where cpf = $1 and situacao not in ('APROVADO','REJEITADO')";
+    if (tipoProcesso) {
+      params.push(tipoProcesso);
+      sql += ' and tipo_processo = $2';
+    }
+    sql += ' order by numero_renach';
+    const r = await this.db.query<{ payload: unknown }>(sql, params);
+    return { processos: r.rows.map((x) => x.payload) };
   }
 
   async getProcesso(numeroRenach: string): Promise<unknown> {

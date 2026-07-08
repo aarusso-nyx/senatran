@@ -32,6 +32,26 @@ bespoke `POST /mock/renach/processes` and map `openProcess` →
 `POST /v1/renach/processos`, persisting the returned `numeroRenach` as its
 `renachProcessKey`.
 
+### Follow-up — recovering the key on `ALREADY_OPEN`
+
+The 402 `ALREADY_OPEN` envelope carries no `numeroRenach`, and there was no way
+to look up an existing process without already knowing its number. So a caller
+hitting a genuine duplicate (an active process it never linked) could not report
+`ALREADY_OPEN` with the key — only fail.
+
+**Resolution:** added `GET /v1/renach/processos?cpf={cpf}&tipoProcesso={tipo}`.
+
+- Lists the candidate's **active** processes (situação not in
+  `APROVADO`/`REJEITADO`), optionally filtered by `tipoProcesso`, as
+  `ProcessoRenachListResponse` (`{ processos: [ProcessoRenach] }`, possibly
+  empty). The "which situação is active" rule stays owned by the mock, not the
+  caller.
+- `cpf` is required (`400` otherwise). Same `/v1` + `x-cpf-usuario` conventions.
+
+`pec` now recovers the existing `numeroRenach` from this endpoint on a 402
+`ALREADY_OPEN` and reports `status: 'ALREADY_OPEN'` with the key. Also a
+WSDenatran extension (flagged in `canonical-mapping.md`).
+
 ## Gap 2 — `getDriverProfile(driverId)`: **not a provider gap** (consumer mapping)
 
 `pec`'s `getDriverProfile(driverId)` keys off a **pec-internal** `driverId`.
