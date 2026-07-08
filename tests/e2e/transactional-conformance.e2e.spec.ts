@@ -409,6 +409,186 @@ describe('transactional contract conformance', () => {
     );
   });
 
+  it('RENAEST: every response conforms to its declared schema', async () => {
+    // Unique natural tuple per run so dedup never turns the submit into a 402.
+    const org = `DETRAN-CONF-${uniq++}-${Date.now().toString().slice(-6)}`;
+    const crash = {
+      dataHoraSinistro: '2024-09-01T08:15:00.000Z',
+      uf: 'SP',
+      codigoMunicipio: '3550308',
+      gravidade: 'COM_VITIMA_FERIDA',
+      local: 'KM 55 - via urbana',
+      orgaoResponsavel: org,
+      condicoesVia: 'SECA',
+      condicoesMeteorologicas: 'BOM',
+      versaoLeiaute: '1.0',
+      vitimas: [{ gravidadeLesao: 'LEVE', tipoEnvolvido: 'CONDUTOR' }],
+      referencias: { renavam: '00123456780' },
+    };
+    const sub = await post('/v1/renaest/sinistros', crash);
+    check('post', '/renaest/sinistros', sub);
+    const idSinistro = sub.body.idSinistro as string;
+    const protocolo = sub.body.protocolo as string;
+
+    check(
+      'get',
+      '/renaest/sinistros/{idSinistro}',
+      await get(`/v1/renaest/sinistros/${idSinistro}`),
+    );
+    check(
+      'get',
+      '/renaest/protocolos/{protocolo}',
+      await get(`/v1/renaest/protocolos/${protocolo}`),
+    );
+    check(
+      'post',
+      '/renaest/sinistros/lotes',
+      await post('/v1/renaest/sinistros/lotes', {
+        sinistros: [
+          { ...crash, orgaoResponsavel: `${org}-L1` },
+          {
+            ...crash,
+            orgaoResponsavel: `${org}-L2`,
+            uf: 'RJ',
+            codigoMunicipio: '3304557',
+          },
+        ],
+      }),
+    );
+    check(
+      'post',
+      '/renaest/sinistros/{idSinistro}/complementos',
+      await post(`/v1/renaest/sinistros/${idSinistro}/complementos`, {
+        motivo: 'Dado complementar.',
+      }),
+    );
+    check(
+      'post',
+      '/renaest/sinistros/{idSinistro}/correcoes',
+      await post(`/v1/renaest/sinistros/${idSinistro}/correcoes`, {
+        motivo: 'Correção de gravidade.',
+        gravidade: 'COM_VITIMA_FERIDA',
+      }),
+    );
+  });
+
+  it('SNE / CDT / DETRAN: every response conforms to its declared schema', async () => {
+    const ait = () => `CF${Date.now().toString().slice(-8)}${uniq++}`;
+    // --- SNE ---
+    check(
+      'get',
+      '/sne/adesoes/veiculos/{placa}',
+      await get('/v1/sne/adesoes/veiculos/ABC1D23'),
+    );
+    check(
+      'get',
+      '/sne/adesoes/cidadaos/{cpf}',
+      await get('/v1/sne/adesoes/cidadaos/52998224725'),
+    );
+    check(
+      'get',
+      '/sne/orgaos/{codigoOrgaoAutuador}/adesao',
+      await get('/v1/sne/orgaos/204020/adesao'),
+    );
+    const aut = await post('/v1/sne/notificacoes/autuacao', {
+      numeroAit: ait(),
+      codigoOrgaoAutuador: '204020',
+      placa: 'ABC1D23',
+      cpfDestinatario: '52998224725',
+    });
+    check('post', '/sne/notificacoes/autuacao', aut);
+    check(
+      'post',
+      '/sne/notificacoes/penalidade',
+      await post('/v1/sne/notificacoes/penalidade', {
+        numeroAit: ait(),
+        codigoOrgaoAutuador: '204020',
+        placa: 'ABC1D23',
+      }),
+    );
+    check(
+      'get',
+      '/sne/notificacoes/{protocolo}',
+      await get(`/v1/sne/notificacoes/${aut.body.protocolo}`),
+    );
+    check(
+      'post',
+      '/sne/notificacoes/{protocolo}/cancelamento',
+      await post(`/v1/sne/notificacoes/${aut.body.protocolo}/cancelamento`, {
+        motivo: 'x',
+      }),
+    );
+
+    // --- CDT (reconhecimento targets A0001002, disjoint from other e2e files) ---
+    check(
+      'get',
+      '/cdt/cidadaos/{cpf}/notificacoes',
+      await get('/v1/cdt/cidadaos/52998224725/notificacoes'),
+    );
+    check(
+      'get',
+      '/cdt/cidadaos/{cpf}/infracoes',
+      await get('/v1/cdt/cidadaos/52998224725/infracoes'),
+    );
+    check(
+      'get',
+      '/cdt/cidadaos/{cpf}/veiculos',
+      await get('/v1/cdt/cidadaos/52998224725/veiculos'),
+    );
+    check(
+      'get',
+      '/cdt/cidadaos/{cpf}/cnh',
+      await get('/v1/cdt/cidadaos/52998224725/cnh'),
+    );
+    check(
+      'get',
+      '/cdt/infracoes/{numeroAit}/pagamento',
+      await get('/v1/cdt/infracoes/A0001001/pagamento'),
+    );
+    check(
+      'post',
+      '/cdt/infracoes/{numeroAit}/reconhecimento',
+      await post('/v1/cdt/infracoes/A0001002/reconhecimento', {}),
+    );
+
+    // --- DETRAN bridge (active UF SP) ---
+    check(
+      'post',
+      '/detrans/{uf}/renavam/consultasVeiculo',
+      await post('/v1/detrans/SP/renavam/consultasVeiculo', {
+        placa: 'ABC1D23',
+        versaoLeiaute: '1.0',
+      }),
+    );
+    check(
+      'post',
+      '/detrans/{uf}/renach/consultasCondutor',
+      await post('/v1/detrans/SP/renach/consultasCondutor', {
+        cpf: '52998224725',
+      }),
+    );
+    check(
+      'post',
+      '/detrans/{uf}/renainf/autosInfracao',
+      await post('/v1/detrans/SP/renainf/autosInfracao', { numeroAit: ait() }),
+    );
+    check(
+      'get',
+      '/detrans/{uf}/renainf/autosInfracao/{numeroAit}',
+      await get('/v1/detrans/SP/renainf/autosInfracao/A0001001'),
+    );
+    check(
+      'post',
+      '/detrans/{uf}/renaest/sinistros',
+      await post('/v1/detrans/SP/renaest/sinistros', { dados: {} }),
+    );
+    check(
+      'post',
+      '/detrans/{uf}/sne/notificacoes',
+      await post('/v1/detrans/SP/sne/notificacoes', { numeroAit: ait() }),
+    );
+  });
+
   it('validated every transactional operation with no schema drift', () => {
     // every transactional path in the contract should have been exercised
     const declared = Object.entries(T.paths).flatMap(([p, ops]) =>

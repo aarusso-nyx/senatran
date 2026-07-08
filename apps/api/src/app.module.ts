@@ -16,6 +16,10 @@ import { ConsultaCsvModule } from '../../../domain/consulta-csv/api/src/consulta
 import { AutorizacoesModule } from '../../../domain/autorizacoes/api/src/autorizacoes.module.js';
 import { RenachModule } from '../../../domain/renach/api/src/renach.module.js';
 import { RenainfModule } from '../../../domain/renainf/api/src/renainf.module.js';
+import { RenaestModule } from '../../../domain/renaest/api/src/renaest.module.js';
+import { SneModule } from '../../../domain/sne/api/src/sne.module.js';
+import { CdtModule } from '../../../domain/cdt/api/src/cdt.module.js';
+import { DetranModule } from '../../../domain/detran/api/src/detran.module.js';
 
 /**
  * Root module. Global config + database + shared services, the WSDenatran auth
@@ -38,6 +42,11 @@ import { RenainfModule } from '../../../domain/renainf/api/src/renainf.module.js
     // Transactional (RENACH/RENAINF) modules:
     RenachModule,
     RenainfModule,
+    // National-extension transactional modules (RENAEST/SNE/CDT/DETRAN bridge):
+    RenaestModule,
+    SneModule,
+    CdtModule,
+    DetranModule,
   ],
   controllers: [HealthController],
   providers: [

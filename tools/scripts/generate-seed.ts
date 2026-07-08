@@ -425,6 +425,21 @@ let fixAit:
       prazoDefesa: string;
     }
   | undefined;
+let fixSinistros:
+  | {
+      aceito: { idSinistro: string; protocolo: string; situacao: string };
+      comVeiculoRenavam: { idSinistro: string; renavam: string };
+      comCondutor: { idSinistro: string; cpfCondutor: string };
+      comInfracaoAit: { idSinistro: string; numeroAit: string };
+      rejeitado: { idSinistro: string; situacao: string };
+      pendente: { idSinistro: string; protocolo: string; situacao: string };
+      comCorrecao: { idSinistro: string };
+      magicMunicipio500: string;
+    }
+  | undefined;
+let fixSne: Record<string, unknown> | undefined;
+let fixCdt: Record<string, unknown> | undefined;
+let fixDetran: Record<string, unknown> | undefined;
 
 // Forced-scenario magic keys — single source for both the SQL emit and the
 // published manifest. [kind, keyValue, forcedStatus, meaning].
@@ -445,6 +460,30 @@ const SCENARIO_KEYS: readonly [string, string, number, string][] = [
   ['cpf', '00000000402', 402, '402 → erro de negócio reservado.'],
   ['cnpj', '00000000000402', 402, '402 → erro de negócio reservado.'],
   ['renavam', '00000000402', 402, '402 → erro de negócio reservado.'],
+  [
+    'codigoMunicipio',
+    '9999999',
+    500,
+    '500 → RENAEST: fonte nacional indisponível (erro interno reservado). Use como codigoMunicipio ao submeter um sinistro.',
+  ],
+  [
+    'codigoOrgaoAutuador',
+    '999999',
+    500,
+    '500 → SNE/DETRAN: órgão autuador reservado (fonte indisponível).',
+  ],
+  [
+    'numeroAit',
+    'A0000500',
+    500,
+    '500 → CDT: AIT reservado (fonte indisponível). Use em /v1/cdt/infracoes/{numeroAit}/*.',
+  ],
+  [
+    'uf',
+    'ZZ',
+    500,
+    '500 → DETRAN: UF reservada (fonte nacional indisponível).',
+  ],
   ['placa', 'ERR5A00', 500, '500 → erro interno reservado.'],
   ['chassi', 'ERR00000000000500', 500, '500 → erro interno reservado.'],
   ['cpf', '00000000500', 500, '500 → erro interno reservado.'],
@@ -1434,6 +1473,559 @@ const auditEvt = (
   writeFileSync(resolve(seedDir, '50-renainf.sql'), parts.join('\n') + '\n');
 }
 {
+  // ---- RENAEST — national crash/sinister base (deterministic) --------------
+  const parts: string[] = ['-- SENATRAN mock seed — RENAEST (generated).'];
+  const chaveNatural = (
+    uf: string,
+    mun: string,
+    dh: string,
+    org: string,
+  ): string => [uf, mun, new Date(dh).toISOString(), org].join('|');
+
+  // Fixed crash records. `refs` cross-links reuse existing RENAVAM/condutor/AIT
+  // fixtures so siblings can exercise the joins. All ids/protocolos are stable.
+  const sinistros = [
+    {
+      id: 'SN00000000001',
+      prot: 'RENAEST-SEED-0000000001',
+      sit: 'RECEBIDO',
+      uf: 'SP',
+      mun: '3550308',
+      dh: '2024-02-10T08:30:00.000Z',
+      grav: 'SEM_VITIMA',
+      org: 'DETRAN-SP',
+      refs: {} as {
+        renavam?: string;
+        cpfCondutor?: string;
+        numeroAit?: string;
+      },
+      vitimas: [] as unknown[],
+    },
+    {
+      id: 'SN00000000002',
+      prot: 'RENAEST-SEED-0000000002',
+      sit: 'RECEBIDO',
+      uf: 'SP',
+      mun: '3550308',
+      dh: '2024-02-11T19:05:00.000Z',
+      grav: 'COM_VITIMA_FERIDA',
+      org: 'DETRAN-SP',
+      refs: { renavam: '00123456780' }, // veículo ABC1D23 (read fixture)
+      vitimas: [{ gravidadeLesao: 'LEVE', tipoEnvolvido: 'CONDUTOR' }],
+    },
+    {
+      id: 'SN00000000003',
+      prot: 'RENAEST-SEED-0000000003',
+      sit: 'RECEBIDO',
+      uf: 'SP',
+      mun: '3509502',
+      dh: '2024-03-01T13:40:00.000Z',
+      grav: 'COM_VITIMA_FERIDA',
+      org: 'PRF',
+      refs: { cpfCondutor: FIX_CPF }, // condutor RENACH (read fixture)
+      vitimas: [{ gravidadeLesao: 'MODERADA', tipoEnvolvido: 'PEDESTRE' }],
+    },
+    {
+      id: 'SN00000000004',
+      prot: 'RENAEST-SEED-0000000004',
+      sit: 'RECEBIDO',
+      uf: 'RJ',
+      mun: '3304557',
+      dh: '2024-03-15T22:10:00.000Z',
+      grav: 'COM_VITIMA_FATAL',
+      org: 'DETRAN-RJ',
+      refs: { numeroAit: 'A0001001' }, // AIT RENAINF (transactional fixture)
+      vitimas: [{ gravidadeLesao: 'FATAL', tipoEnvolvido: 'MOTOCICLISTA' }],
+    },
+    {
+      id: 'SN00000000005',
+      prot: 'RENAEST-SEED-0000000005',
+      sit: 'REJEITADO', // correção não permitida (situação terminal)
+      uf: 'MG',
+      mun: '3106200',
+      dh: '2024-01-20T06:15:00.000Z',
+      grav: 'SEM_VITIMA',
+      org: 'DETRAN-MG',
+      refs: {},
+      vitimas: [] as unknown[],
+    },
+    {
+      id: 'SN00000000006',
+      prot: 'RENAEST-SEED-0000000006',
+      sit: 'EM_ANALISE', // fixture de protocolo pendente
+      uf: 'PR',
+      mun: '4106902',
+      dh: '2024-04-02T17:25:00.000Z',
+      grav: 'COM_VITIMA_FERIDA',
+      org: 'DETRAN-PR',
+      refs: {},
+      vitimas: [{ gravidadeLesao: 'LEVE', tipoEnvolvido: 'PASSAGEIRO' }],
+    },
+    {
+      id: 'SN00000000007',
+      prot: 'RENAEST-SEED-0000000007',
+      sit: 'RECEBIDO', // possui uma correção registrada (abaixo)
+      uf: 'SP',
+      mun: '3550308',
+      dh: '2024-04-10T09:00:00.000Z',
+      grav: 'COM_VITIMA_FERIDA',
+      org: 'DETRAN-SP',
+      refs: {},
+      vitimas: [{ gravidadeLesao: 'LEVE', tipoEnvolvido: 'CONDUTOR' }],
+    },
+  ];
+  parts.push(
+    insert(
+      'renaest.sinistro',
+      [
+        'id_sinistro',
+        'protocolo',
+        'chave_natural',
+        'situacao',
+        'uf',
+        'codigo_municipio',
+        'data_hora_sinistro',
+        'gravidade',
+        'orgao_responsavel',
+        'renavam',
+        'cpf_condutor',
+        'numero_ait',
+        'payload',
+      ],
+      sinistros.map((s) => {
+        const payload = {
+          protocolo: s.prot,
+          idSinistro: s.id,
+          situacao: s.sit,
+          dataHoraSinistro: new Date(s.dh).toISOString(),
+          uf: s.uf,
+          codigoMunicipio: s.mun,
+          gravidade: s.grav,
+          local: `KM ${100 + Number(s.id.slice(-2))} - via urbana`,
+          orgaoResponsavel: s.org,
+          codigoTipoSinistro: null,
+          condicoesVia: 'SECA',
+          condicoesMeteorologicas: 'BOM',
+          veiculos: [],
+          pessoas: [],
+          vitimas: s.vitimas,
+          referencias: Object.keys(s.refs).length ? s.refs : null,
+          dataTransmissao: new Date(s.dh).toISOString(),
+        };
+        auditEvt(
+          'RENAEST',
+          'renaest.sinistro',
+          s.id,
+          'sinistro.seed',
+          s.sit,
+          payload,
+        );
+        return [
+          sqlStr(s.id),
+          sqlStr(s.prot),
+          sqlStr(chaveNatural(s.uf, s.mun, s.dh, s.org)),
+          sqlStr(s.sit),
+          sqlStr(s.uf),
+          sqlStr(s.mun),
+          sqlStr(new Date(s.dh).toISOString()),
+          sqlStr(s.grav),
+          sqlStr(s.org),
+          sqlStr(s.refs.renavam ?? null),
+          sqlStr(s.refs.cpfCondutor ?? null),
+          sqlStr(s.refs.numeroAit ?? null),
+          sqlJson(payload),
+        ];
+      }),
+    ),
+  );
+  // A pre-existing correction against SN00000000007 (correction fixture).
+  parts.push(
+    insert(
+      'renaest.retificacao',
+      ['id', 'id_sinistro', 'protocolo', 'tipo', 'situacao', 'payload'],
+      [
+        [
+          sqlStr(uuid(rng)),
+          sqlStr('SN00000000007'),
+          sqlStr('RENAEST-SEED-COR-0000007'),
+          sqlStr('CORRECAO'),
+          sqlStr('EM_ANALISE'),
+          sqlJson({
+            motivo: 'Ajuste de gravidade da vítima',
+            gravidade: 'COM_VITIMA_FERIDA',
+          }),
+        ],
+      ],
+    ),
+  );
+  fixSinistros = {
+    aceito: {
+      idSinistro: 'SN00000000001',
+      protocolo: 'RENAEST-SEED-0000000001',
+      situacao: 'RECEBIDO',
+    },
+    comVeiculoRenavam: { idSinistro: 'SN00000000002', renavam: '00123456780' },
+    comCondutor: { idSinistro: 'SN00000000003', cpfCondutor: FIX_CPF },
+    comInfracaoAit: { idSinistro: 'SN00000000004', numeroAit: 'A0001001' },
+    rejeitado: { idSinistro: 'SN00000000005', situacao: 'REJEITADO' },
+    pendente: {
+      idSinistro: 'SN00000000006',
+      protocolo: 'RENAEST-SEED-0000000006',
+      situacao: 'EM_ANALISE',
+    },
+    comCorrecao: { idSinistro: 'SN00000000007' },
+    magicMunicipio500: '9999999',
+  };
+  writeFileSync(resolve(seedDir, '70-renaest.sql'), parts.join('\n') + '\n');
+}
+{
+  // ---- SNE — electronic notifications (deterministic) ----------------------
+  const parts: string[] = ['-- SENATRAN mock seed — SNE (generated).'];
+  const NAO_ADERENTE_CPF = '11144477735'; // valid CPF, deliberately non-adherent
+  const adesoes: [string, string, boolean, string | null][] = [
+    ['VEICULO', 'ABC1D23', true, 'APP_CDT'],
+    ['VEICULO', 'IND1I01', false, null],
+    ['CIDADAO', FIX_CPF, true, 'APP_CDT'],
+    ['CIDADAO', NAO_ADERENTE_CPF, false, null],
+    ['ORGAO', '204020', true, 'APP_CDT'],
+    ['ORGAO', '999998', false, null],
+  ];
+  parts.push(
+    insert(
+      'sne.adesao',
+      ['tipo', 'chave', 'aderido', 'canal', 'payload'],
+      adesoes.map(([tipo, chave, aderido, canal]) => [
+        sqlStr(tipo),
+        sqlStr(chave),
+        sqlBool(aderido),
+        sqlStr(canal),
+        sqlJson({ tipo, chave, aderido, canal }),
+      ]),
+    ),
+  );
+  const notifs: {
+    p: string;
+    ait: string;
+    tipo: string;
+    sit: string;
+    canal: string;
+  }[] = [
+    {
+      p: 'SNE-SEED-AUT-0001',
+      ait: 'A0001001',
+      tipo: 'AUTUACAO',
+      sit: 'ACEITA',
+      canal: 'APP_CDT',
+    },
+    {
+      p: 'SNE-SEED-PEN-0001',
+      ait: 'A0001001',
+      tipo: 'PENALIDADE',
+      sit: 'ACEITA',
+      canal: 'APP_CDT',
+    },
+    {
+      p: 'SNE-SEED-PEN-0002',
+      ait: 'A0001002',
+      tipo: 'PENALIDADE',
+      sit: 'PENDENTE',
+      canal: 'INDISPONIVEL',
+    },
+    {
+      p: 'SNE-SEED-REJ-0001',
+      ait: 'A0001003',
+      tipo: 'AUTUACAO',
+      sit: 'REJEITADA',
+      canal: 'EMAIL',
+    },
+    {
+      p: 'SNE-SEED-EXP-0001',
+      ait: 'A0001004',
+      tipo: 'AUTUACAO',
+      sit: 'EXPIRADA',
+      canal: 'APP_CDT',
+    },
+  ];
+  parts.push(
+    insert(
+      'sne.notificacao',
+      [
+        'protocolo',
+        'numero_ait',
+        'id_processo',
+        'tipo_notificacao',
+        'codigo_orgao_autuador',
+        'placa',
+        'cpf_destinatario',
+        'situacao',
+        'canal',
+        'payload',
+      ],
+      notifs.map((n) => {
+        const payload = {
+          protocolo: n.p,
+          numeroAit: n.ait,
+          idProcesso: null,
+          tipoNotificacao: n.tipo,
+          codigoOrgaoAutuador: '204020',
+          placa: 'ABC1D23',
+          cpfDestinatario: FIX_CPF,
+          situacao: n.sit,
+          canal: n.canal,
+          dataNotificacao: '2024-05-01T10:00:00.000Z',
+          dataDisponibilizacao:
+            n.sit === 'ACEITA' ? '2024-05-01T10:00:00.000Z' : null,
+          dataCiencia: null,
+          prazoLegal: '2024-05-31T10:00:00.000Z',
+          mensagem: null,
+        };
+        auditEvt(
+          'SNE',
+          'sne.notificacao',
+          n.p,
+          'notificacao.seed',
+          n.sit,
+          payload,
+        );
+        return [
+          sqlStr(n.p),
+          sqlStr(n.ait),
+          sqlStr(null),
+          sqlStr(n.tipo),
+          sqlStr('204020'),
+          sqlStr('ABC1D23'),
+          sqlStr(FIX_CPF),
+          sqlStr(n.sit),
+          sqlStr(n.canal),
+          sqlJson(payload),
+        ];
+      }),
+    ),
+  );
+  fixSne = {
+    veiculoAderente: 'ABC1D23',
+    veiculoNaoAderente: 'IND1I01',
+    cidadaoAderente: FIX_CPF,
+    cidadaoNaoAderente: NAO_ADERENTE_CPF,
+    orgaoAderente: '204020',
+    orgaoNaoAderente: '999998',
+    notificacaoAceita: 'SNE-SEED-AUT-0001',
+    notificacaoPendente: 'SNE-SEED-PEN-0002',
+    notificacaoRejeitada: 'SNE-SEED-REJ-0001',
+    notificacaoExpirada: 'SNE-SEED-EXP-0001',
+    magicOrgao500: '999999',
+  };
+  writeFileSync(resolve(seedDir, '80-sne.sql'), parts.join('\n') + '\n');
+}
+{
+  // ---- CDT — citizen-channel projection (deterministic) --------------------
+  const parts: string[] = ['-- SENATRAN mock seed — CDT (generated).'];
+  const LINHA = '34191.79001 01043.510047 91020.150008 9 84410000029347';
+  const infr: {
+    ait: string;
+    pct: number;
+    valor: number;
+    boleto: boolean;
+    sit: string;
+  }[] = [
+    {
+      ait: 'A0001001',
+      pct: 40,
+      valor: 293.47,
+      boleto: true,
+      sit: 'DISPONIVEL',
+    },
+    {
+      ait: 'A0001002',
+      pct: 20,
+      valor: 130.16,
+      boleto: true,
+      sit: 'DISPONIVEL',
+    },
+    { ait: 'A0001003', pct: 0, valor: 195.23, boleto: true, sit: 'DISPONIVEL' },
+    {
+      ait: 'A0001004',
+      pct: 40,
+      valor: 293.47,
+      boleto: false,
+      sit: 'INDISPONIVEL',
+    },
+    { ait: 'A0001005', pct: 40, valor: 293.47, boleto: true, sit: 'PAGA' },
+  ];
+  parts.push(
+    insert(
+      'cdt.infracao',
+      [
+        'numero_ait',
+        'cpf',
+        'situacao',
+        'valor_original',
+        'percentual_desconto',
+        'valor_com_desconto',
+        'boleto_disponivel',
+        'linha_digitavel',
+        'data_vencimento',
+        'origem',
+        'protocolo_sne',
+        'protocolo_renainf',
+        'reconhecida',
+        'payload',
+      ],
+      infr.map((x) => {
+        const desc =
+          x.pct > 0
+            ? Math.round(x.valor * (1 - x.pct / 100) * 100) / 100
+            : null;
+        const payload = {
+          numeroAit: x.ait,
+          cpf: FIX_CPF,
+          situacao: x.sit,
+          valorOriginal: x.valor,
+          percentualDesconto: x.pct,
+          valorComDesconto: desc,
+          boletoDisponivel: x.boleto,
+          linhaDigitavel: x.boleto ? LINHA : null,
+          dataVencimento: '2024-06-30',
+          origem: 'RENAINF',
+          protocoloSne: 'SNE-SEED-AUT-0001',
+          protocoloRenainf: 'RENAINF-SEED-0001',
+        };
+        return [
+          sqlStr(x.ait),
+          sqlStr(FIX_CPF),
+          sqlStr(x.sit),
+          String(x.valor),
+          String(x.pct),
+          desc != null ? String(desc) : 'null',
+          sqlBool(x.boleto),
+          x.boleto ? sqlStr(LINHA) : 'null',
+          sqlStr('2024-06-30'),
+          sqlStr('RENAINF'),
+          sqlStr('SNE-SEED-AUT-0001'),
+          sqlStr('RENAINF-SEED-0001'),
+          sqlBool(false),
+          sqlJson(payload),
+        ];
+      }),
+    ),
+  );
+  fixCdt = {
+    cidadao: FIX_CPF,
+    infracaoDesconto40: 'A0001001',
+    infracaoDesconto20: 'A0001002',
+    infracaoSemDesconto: 'A0001003',
+    infracaoBoletoIndisponivel: 'A0001004',
+    infracaoReconhecimentoNaoPermitido: 'A0001005',
+    magicAit500: 'A0000500',
+  };
+  writeFileSync(resolve(seedDir, '85-cdt.sql'), parts.join('\n') + '\n');
+}
+{
+  // ---- DETRAN — national-base bridge profiles (deterministic) --------------
+  const parts: string[] = [
+    '-- SENATRAN mock seed — DETRAN bridge (generated).',
+  ];
+  const perfis: {
+    uf: string;
+    org: string;
+    perfil: string;
+    ver: string;
+    ativo: boolean;
+  }[] = [
+    { uf: 'SP', org: '204020', perfil: 'PRODUCAO', ver: '1.0', ativo: true },
+    { uf: 'RJ', org: '204040', perfil: 'PRODUCAO', ver: '1.0', ativo: false },
+    {
+      uf: 'BA',
+      org: '292920',
+      perfil: 'HOMOLOGACAO_PENDENTE',
+      ver: '1.0',
+      ativo: true,
+    },
+  ];
+  parts.push(
+    insert(
+      'detran.perfil',
+      [
+        'uf',
+        'codigo_orgao',
+        'perfil_integracao',
+        'versao_leiaute',
+        'ativo',
+        'payload',
+      ],
+      perfis.map((p) => [
+        sqlStr(p.uf),
+        sqlStr(p.org),
+        sqlStr(p.perfil),
+        sqlStr(p.ver),
+        sqlBool(p.ativo),
+        sqlJson({
+          uf: p.uf,
+          codigoOrgao: p.org,
+          perfilIntegracao: p.perfil,
+          versaoLeiaute: p.ver,
+          ativo: p.ativo,
+        }),
+      ]),
+    ),
+  );
+  const bridgeProt = 'DTR-SP-SEED000001';
+  const bridgePayload = {
+    protocoloDetran: bridgeProt,
+    uf: 'SP',
+    sistemaNacional: 'RENAINF',
+    protocoloNacional: 'RENAINF-SEED000001',
+    numeroAit: 'A0001001',
+    codigoOrgao: '204020',
+    perfilIntegracao: 'PRODUCAO',
+    versaoLeiaute: '1.0',
+    situacao: 'ACEITO',
+    retorno: { numeroAit: 'A0001001' },
+  };
+  parts.push(
+    insert(
+      'detran.bridge',
+      [
+        'protocolo_detran',
+        'uf',
+        'sistema_nacional',
+        'protocolo_nacional',
+        'numero_ait',
+        'situacao',
+        'payload',
+      ],
+      [
+        [
+          sqlStr(bridgeProt),
+          sqlStr('SP'),
+          sqlStr('RENAINF'),
+          sqlStr('RENAINF-SEED000001'),
+          sqlStr('A0001001'),
+          sqlStr('ACEITO'),
+          sqlJson(bridgePayload),
+        ],
+      ],
+    ),
+  );
+  auditEvt(
+    'DETRAN',
+    'detran.bridge',
+    bridgeProt,
+    'bridge.seed',
+    'ACEITO',
+    bridgePayload,
+  );
+  fixDetran = {
+    ufAtiva: 'SP',
+    ufInativa: 'RJ',
+    ufRejeitaBridge: 'BA',
+    bridgeProtocolo: bridgeProt,
+    numeroAitBridge: 'A0001001',
+    magicUf500: 'ZZ',
+  };
+  writeFileSync(resolve(seedDir, '88-detran.sql'), parts.join('\n') + '\n');
+}
+{
   const parts: string[] = ['-- SENATRAN mock seed — audit trail (generated).'];
   parts.push(
     insert(
@@ -1524,6 +2116,22 @@ const auditEvt = (
       prazosDias: { transmissao: 30, notificacao: 30, defesa: 30 },
       note: 'GET /v1/renainf/autosInfracao/{numeroAit} returns `situacao` (the AIT-record status); `situacaoProcesso` is the administrative-case lifecycle state. Deadline 402s are deterministic (body date vs a derived/stored deadline, no wall clock): post an AutoInfracao with a late `dataTransmissao` for AIT.TRANSMISSION_EXPIRED; notify autuação with a late `dataNotificacao` for NOTICE.DEADLINE_EXPIRED; a defesa with `dataProtocolo` after the case `prazoDefesa` gives DEFENSE.LATE_SUBMISSION (fixture A0001001 carries a past prazoDefesa); an AutoInfracao with `canalNotificacao: SNE` on device DEV-0001 gives SNE.NOT_ADHERED.',
     },
+    renaest: {
+      ...fixSinistros,
+      note: 'National crash/sinister base (national extension — national-extensions-mapping.md). GET a seeded crash by `aceito.idSinistro` or its `aceito.protocolo`. Writes: POST /v1/renaest/sinistros is idempotent under Idempotency-Key; a same-tuple (uf, codigoMunicipio, dataHoraSinistro, orgaoResponsavel) resubmit without a key gives RENAEST.CRASH.DUPLICATED (402). A body with `versaoLeiaute` other than "1.0" gives RENAEST.CRASH.INVALID_LAYOUT (400); a COM_VITIMA_* gravidade with no `vitimas`, or a missing `local`, gives RENAEST.CRASH.INCOMPLETE_DATA (402). Correcting/complementing the terminal `rejeitado.idSinistro` gives RENAEST.CRASH.CORRECTION_NOT_ALLOWED (402). Submitting with `codigoMunicipio: magicMunicipio500` forces a 500.',
+    },
+    sne: {
+      ...fixSne,
+      note: 'Electronic-notification base (national extension). Check adherence via GET /v1/sne/adesoes/veiculos/{veiculoAderente} etc. Submit POST /v1/sne/notificacoes/autuacao|penalidade with an adherent `codigoOrgaoAutuador` + adherent `placa`/`cpfDestinatario`; a non-adherent agency gives SNE.AGENCY.NOT_ADHERED (402), a non-adherent recipient SNE.NOT_ADHERED (402). A `dataNotificacao` more than 30 days after `dataInfracao` gives SNE.NOTICE.DEADLINE_EXPIRED (402). Idempotent under Idempotency-Key; a second notice for the same (numeroAit, tipo) without a key gives SNE.NOTIFICATION.INVALID_STATUS (402). Cancelling a terminal notice (`notificacaoRejeitada`/`notificacaoExpirada`) gives SNE.NOTIFICATION.INVALID_STATUS. `codigoOrgaoAutuador: magicOrgao500` forces a 500.',
+    },
+    cdt: {
+      ...fixCdt,
+      note: 'Citizen-channel projection (national extension) — NOT an identity provider. GET the citizen views under /v1/cdt/cidadaos/{cidadao}/{notificacoes|infracoes|veiculos|cnh}; an unknown CPF gives CDT.CITIZEN.NOT_FOUND (404). GET /v1/cdt/infracoes/{numeroAit}/pagamento returns the discount/boleto projection; `infracaoDesconto40`→40%, `infracaoDesconto20`→20%, `infracaoSemDesconto`→0%, `infracaoBoletoIndisponivel`→boletoDisponivel:false. POST /v1/cdt/infracoes/{numeroAit}/reconhecimento unlocks the 40% path; a no-discount/boleto-unavailable infraction gives CDT.DISCOUNT.NOT_AVAILABLE (402), and `infracaoReconhecimentoNaoPermitido` (situação PAGA) gives CDT.RECOGNITION.NOT_ALLOWED (402). `magicAit500` forces a 500.',
+    },
+    detran: {
+      ...fixDetran,
+      note: 'State-DETRAN national-base bridge (national extension) — only national-base interactions, never UF-proprietary APIs. POST /v1/detrans/{ufAtiva}/renavam/consultasVeiculo etc. bridge to a national base and return a `protocoloDetran` linked to `protocoloNacional`. `ufInativa` gives DETRAN.PROFILE.INACTIVE (402); an unknown UF gives DETRAN.PROFILE.NOT_FOUND (404); a `versaoLeiaute` other than the profile version gives DETRAN.LAYOUT.INVALID (400); `ufRejeitaBridge` (profile in homologation) gives DETRAN.BRIDGE.REJECTED (402). GET /v1/detrans/{ufAtiva}/renainf/autosInfracao/{numeroAitBridge} reads the seeded bridge. `magicUf500` forces a 500.',
+    },
     counts: {
       veiculos: vehicles.length,
       condutores: drivers.length,
@@ -1533,6 +2141,11 @@ const auditEvt = (
       processosRenach: 41,
       aitsRenainf: 61,
       dispositivos: 15,
+      sinistrosRenaest: 7,
+      adesoesSne: 6,
+      notificacoesSne: 5,
+      infracoesCdt: 5,
+      perfisDetran: 3,
     },
   };
   writeFileSync(
@@ -1542,7 +2155,7 @@ const auditEvt = (
 }
 
 console.log(
-  'generate-seed: wrote database/seed/{10-ref,20-read,30-mock,40-renach,50-renainf,60-audit}.sql + manifest.json',
+  'generate-seed: wrote database/seed/{10-ref,20-read,30-mock,40-renach,50-renainf,60-audit,70-renaest,80-sne,85-cdt,88-detran}.sql + manifest.json',
 );
 console.log(
   `  vehicles=${vehicles.length} drivers=${drivers.length} infracoes=${INFR} audit=${audit.length}`,

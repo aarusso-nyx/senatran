@@ -13,7 +13,7 @@ reproducible integration target during development and testing.
 
 ## What it mocks
 
-**87 endpoints under `/v1`, one convention** — every endpoint requires the
+**114 endpoints under `/v1`, one convention** — every endpoint requires the
 `x-cpf-usuario` header and returns non-2xx as `{ returnCode, message }`
 (Portuguese camelCase fields throughout):
 
@@ -21,11 +21,17 @@ reproducible integration target during development and testing.
   `veiculos`, `condutores`, `infracoes`, `indicadores`, `restricoesJudiciaisAtivas`,
   `rouboFurto`, `ConsultaCSV`, `autorizacoesAlteracaoVeiculo`. →
   [`openapi.yaml`](docs/framework/contracts/openapi.yaml).
-- **Transactional — RENACH/RENAINF** (30): driver-licensing exam and infraction
+- **Transactional — RENACH/RENAINF** (32): driver-licensing exam and infraction
   lifecycle workflows — stateful (state machines, idempotency, audit), ported into
   WSDenatran conventions from the canonical reference. See
   [`openapi-transactional.yaml`](docs/framework/contracts/openapi-transactional.yaml)
   and [`canonical-mapping.md`](docs/framework/contracts/canonical-mapping.md).
+- **National extensions** (25) — national-base surfaces beyond the canonical
+  corpus, same conventions and contract file: **RENAEST** crash/sinister base
+  (`/v1/renaest/*`), **SNE** electronic notifications (`/v1/sne/*`), **CDT**
+  citizen-channel projection (`/v1/cdt/*`), and the **State-DETRAN national-base
+  bridge** (`/v1/detrans/{uf}/*`). Boundary (what stays out — municipal/tow/yard)
+  in [`national-extensions-mapping.md`](docs/framework/contracts/national-extensions-mapping.md).
 
 ## Stack
 

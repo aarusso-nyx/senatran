@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "1.0.0",
+  "version": "1.0.0",
+  "id": "INV-CDT-001",
+  "domain": "CDT",
+  "severity": "gate",
+  "type": "projection",
+  "title": "CDT citizen-channel projection and discount-eligibility rules",
+  "statement": "CDT endpoints are a read projection over national data (SNE notifications, RENAINF/CDT infractions, vehicles, CNH) — NOT an identity provider. Rules CDT.C001–C004: an unknown citizen (no condutor, no owned vehicle, no débito) yields 404 CDT.CITIZEN.NOT_FOUND (C001); an unknown numeroAit yields 404 CDT.INFRACTION.NOT_FOUND (C002); the payment projection exposes the discount tier (40% recognition path, 20% path, or none) and boleto availability; a reconhecimento on an infraction with no discount or an unavailable boleto yields 402 CDT.DISCOUNT.NOT_AVAILABLE (C003); a reconhecimento on a terminal/already-recognized infraction yields 402 CDT.RECOGNITION.NOT_ALLOWED (C004). The single write (reconhecimento) is audited per INV-IDEMP-001.",
+  "rationale": "CDT is the citizen-facing projection of national traffic data. It must reflect SNE/RENAINF state and the discount rules deterministically so pec/teat can exercise citizen flows without CDT becoming a second identity or app backend.",
+  "status": "active",
+  "verification": {
+    "required_suites": ["e2e", "int"],
+    "oracle": "tests"
+  },
+  "authority": {
+    "docs": [
+      {
+        "doc": "docs/framework/arch/national-extensions-workflows.md",
+        "anchor": "cdt-citizen-channel-projection"
+      },
+      {
+        "doc": "docs/framework/contracts/errors.md",
+        "anchor": "cdt-domain-codes-national-extension"
+      }
+    ]
+  },
+  "scope": {
+    "components": ["api", "cdt"],
+    "code_areas": ["domain/cdt/api/src/**", "database/ddl/25-cdt.sql"]
+  },
+  "change_policy": {
+    "breaking_change_requires": ["doc_update", "test_update", "human_approval"],
+    "test_weakening_allowed": false,
+    "human_approval_required": true
+  },
+  "tags": ["cdt", "projection", "transactional", "national-extension", "D-0011"]
+}

@@ -71,6 +71,48 @@ consumers can branch on the code while the envelope stays WSDenatran-uniform.
 | `RENAINF.PAYMENT.ALREADY_SETTLED`           | 402  | débito já quitado.                               |
 | `RENAINF.SNE.NOT_ADHERED`                   | 402  | órgão não aderente ao SNE.                       |
 
+## RENAEST domain codes (national extension)
+
+RENAEST is the national crash/sinister base (extensão nacional — see
+`national-extensions-mapping.md`). It follows the same envelope and status
+semantics as RENACH/RENAINF.
+
+| Code                                   | HTTP | When                                                   |
+| -------------------------------------- | ---- | ------------------------------------------------------ |
+| `RENAEST.CRASH.NOT_FOUND`              | 404  | sinistro/protocolo inexistente.                        |
+| `RENAEST.CRASH.INVALID_LAYOUT`         | 400  | versão de leiaute não suportada / corpo malformado.    |
+| `RENAEST.CRASH.INCOMPLETE_DATA`        | 402  | dados de vítima/local obrigatórios ausentes.           |
+| `RENAEST.CRASH.DUPLICATED`             | 402  | reenvio da mesma tupla natural sem `Idempotency-Key`.  |
+| `RENAEST.CRASH.CORRECTION_NOT_ALLOWED` | 402  | complemento/correção em registro em situação terminal. |
+
+## SNE domain codes (national extension)
+
+| Code                              | HTTP | When                                                   |
+| --------------------------------- | ---- | ------------------------------------------------------ |
+| `SNE.NOTIFICATION.NOT_FOUND`      | 404  | protocolo de notificação inexistente.                  |
+| `SNE.AGENCY.NOT_ADHERED`          | 402  | órgão autuador não aderente ao SNE.                    |
+| `SNE.NOT_ADHERED`                 | 402  | destinatário (veículo/cidadão) não aderente.           |
+| `SNE.NOTICE.DEADLINE_EXPIRED`     | 402  | prazo legal da notificação expirado.                   |
+| `SNE.NOTIFICATION.INVALID_STATUS` | 402  | duplicidade sem chave / cancelamento de nota terminal. |
+
+## CDT domain codes (national extension)
+
+| Code                          | HTTP | When                                                |
+| ----------------------------- | ---- | --------------------------------------------------- |
+| `CDT.CITIZEN.NOT_FOUND`       | 404  | cidadão sem condutor/veículo/débito conhecido.      |
+| `CDT.INFRACTION.NOT_FOUND`    | 404  | infração (numeroAit) inexistente na projeção.       |
+| `CDT.DISCOUNT.NOT_AVAILABLE`  | 402  | reconhecimento sem desconto/boleto disponível.      |
+| `CDT.RECOGNITION.NOT_ALLOWED` | 402  | reconhecimento em infração terminal/já reconhecida. |
+
+## DETRAN bridge domain codes (national extension)
+
+| Code                       | HTTP | When                                               |
+| -------------------------- | ---- | -------------------------------------------------- |
+| `DETRAN.PROFILE.NOT_FOUND` | 404  | UF sem perfil de integração à base nacional.       |
+| `DETRAN.PROFILE.INACTIVE`  | 402  | perfil da UF inativo/suspenso.                     |
+| `DETRAN.LAYOUT.INVALID`    | 400  | versão de leiaute incompatível com o perfil da UF. |
+| `DETRAN.BRIDGE.REJECTED`   | 402  | bridge rejeitado (perfil em homologação pendente). |
+
 ## Enforcement status
 
 Actively enforced by the services (each has a test): all `*.NOT_FOUND`,
@@ -96,6 +138,21 @@ the infraction → `NOTICE.DEADLINE_EXPIRED`; a defesa `dataProtocolo` after the
 case `prazoDefesa` (notice + 30 days; fixture `A0001001` carries a past one) →
 `DEFENSE.LATE_SUBMISSION`; `canalNotificacao: SNE` on the non-adherent fixture
 device `DEV-0001` → `SNE.NOT_ADHERED`.
+
+All five RENAEST codes are actively enforced and tested:
+`RENAEST.CRASH.NOT_FOUND` (unknown `idSinistro`/`protocolo`),
+`RENAEST.CRASH.INVALID_LAYOUT` (a `versaoLeiaute` other than `1.0`),
+`RENAEST.CRASH.INCOMPLETE_DATA` (a `COM_VITIMA_*` gravidade with no `vitimas`, or
+a missing `local`), `RENAEST.CRASH.DUPLICATED` (a same-tuple resubmit without an
+`Idempotency-Key`), and `RENAEST.CRASH.CORRECTION_NOT_ALLOWED` (complement/
+correction on a terminal record). RENAEST also honours the `codigoMunicipio`
+`9999999` magic key → 500 (`scenarios.md`).
+
+All SNE, CDT and DETRAN-bridge codes are likewise actively enforced and tested
+(each has an e2e case). SNE's `NOTICE.DEADLINE_EXPIRED` is deterministic (body
+`dataNotificacao` vs `dataInfracao + 30d`, never the wall clock). The national
+extensions add magic keys (`scenarios.md`): `codigoOrgaoAutuador` `999999` → 500
+(SNE/DETRAN), `numeroAit` `A0000500` → 500 (CDT), `uf` `ZZ` → 500 (DETRAN).
 
 Modeled in this catalog but **not yet enforced** (they need biometric/signature
 verification data the mock does not carry): `RENACH.BIOMETRY.NOT_MATCHED`,

@@ -43,3 +43,22 @@ create or replace view contract.v_renainf_debito as
          jsonb_set(coalesce(d.payload, '{}'::jsonb), '{situacaoPagamento}', to_jsonb(d.situacao_pagamento)) as payload
   from renainf.processo p
   join renainf.debito d on d.processo_id = p.id;
+
+-- GET /v1/renaest/sinistros/{idSinistro} and /v1/renaest/protocolos/{protocolo}
+-- both read this view; the live `situacao` is injected into the stored payload.
+create or replace view contract.v_renaest_sinistro as
+  select id_sinistro, protocolo,
+         jsonb_set(payload, '{situacao}', to_jsonb(situacao)) as payload
+  from renaest.sinistro;
+
+-- GET /v1/sne/notificacoes/{protocolo}
+create or replace view contract.v_sne_notificacao as
+  select protocolo, cpf_destinatario,
+         jsonb_set(payload, '{situacao}', to_jsonb(situacao)) as payload
+  from sne.notificacao;
+
+-- GET /v1/cdt/infracoes/{numeroAit}/pagamento (payment/discount projection)
+create or replace view contract.v_cdt_infracao as
+  select numero_ait, cpf,
+         jsonb_set(payload, '{situacao}', to_jsonb(situacao)) as payload
+  from cdt.infracao;
