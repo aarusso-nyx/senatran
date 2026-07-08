@@ -21,6 +21,10 @@ jobs:
           --health-interval 10s --health-timeout 5s --health-retries 5
     env:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/senatran
+      # The integration/e2e setup overrides DATABASE_URL with
+      # SENATRAN_TEST_DATABASE_URL ?? a passwordless local default; CI's Postgres
+      # uses SCRAM auth, so the password must be supplied here.
+      SENATRAN_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/senatran
       DB_HOST: localhost
       DB_PORT: '5432'
       DB_USER: postgres
@@ -28,9 +32,10 @@ jobs:
       DB_NAME: senatran
     steps:
       - uses: actions/checkout@v4
+      # No `version:` here — pnpm/action-setup@v4 reads the pinned version from
+      # package.json `packageManager`. Passing both trips ERR_PNPM_BAD_PM_VERSION
+      # ("Multiple versions of pnpm specified").
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: 24
