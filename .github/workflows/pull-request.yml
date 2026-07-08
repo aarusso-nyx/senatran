@@ -21,6 +21,10 @@ jobs:
           --health-interval 10s --health-timeout 5s --health-retries 5
     env:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/senatran
+      # The integration/e2e setup overrides DATABASE_URL with
+      # SENATRAN_TEST_DATABASE_URL ?? a passwordless local default; CI's Postgres
+      # uses SCRAM auth, so the password must be supplied here.
+      SENATRAN_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/senatran
       DB_HOST: localhost
       DB_PORT: '5432'
       DB_USER: postgres
