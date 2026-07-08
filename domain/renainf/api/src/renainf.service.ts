@@ -385,13 +385,19 @@ export class RenainfService {
       undefined,
       async (trx) => {
         await this.processo(trx, idProcesso);
+        // Contract field is `condutorIndicado.cpf`; accept the legacy aliases too.
+        const cpfIndicado =
+          (body.condutorIndicado as Row)?.cpf ??
+          (body.condutor as Row)?.cpf ??
+          (body.cpfCondutor as string) ??
+          null;
+        if (!cpfIndicado)
+          throw badRequest(
+            'RENAINF.DRIVER.CPF_REQUIRED — cpf do condutor indicado é obrigatório.',
+          );
         await trx.query(
           'insert into renainf.indicacao_condutor (processo_id, cpf_condutor, payload) values ($1,$2,$3::jsonb)',
-          [
-            idProcesso,
-            (body.condutor as Row)?.cpf ?? body.cpfCondutor ?? null,
-            JSON.stringify(body),
-          ],
+          [idProcesso, cpfIndicado, JSON.stringify(body)],
         );
         const resp = {
           idProcesso,

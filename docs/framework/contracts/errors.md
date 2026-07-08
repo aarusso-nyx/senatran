@@ -52,6 +52,7 @@ consumers can branch on the code while the envelope stays WSDenatran-uniform.
 | `RENAINF.AIT.DUPLICATED`                    | 402  | AIT já lavrado (número duplicado).               |
 | `RENAINF.AIT.INVALID_NUMBER`                | 400  | número de AIT inválido.                          |
 | `RENAINF.AIT.INVALID_INFRACTION_CODE`       | 400  | código de infração inválido.                     |
+| `RENAINF.DRIVER.CPF_REQUIRED`               | 400  | cpf do condutor indicado obrigatório.            |
 | `RENAINF.AIT.INVALID_AGENT`                 | 402  | agente inativo/não vinculado ao órgão.           |
 | `RENAINF.AIT.INVALID_DEVICE`                | 402  | dispositivo/talonário não homologado.            |
 | `RENAINF.AIT.OUT_OF_RANGE`                  | 402  | número fora da faixa reservada.                  |

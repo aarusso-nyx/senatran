@@ -177,7 +177,9 @@ paths:
           description: OK. Tudo funcionou como esperado.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ClinicaCredenciadaList' }
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ClinicaCredenciada' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '402': { $ref: '#/components/responses/BusinessError' }
@@ -197,7 +199,8 @@ paths:
           content:
             application/json:
               schema:
-                { $ref: '#/components/schemas/ProfissionalCredenciadoList' }
+                type: array
+                items: { $ref: '#/components/schemas/ProfissionalCredenciado' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '402':
@@ -1345,6 +1348,7 @@ components:
         - AUTUACAO_ABERTA
         - NOTIFICADO_AUTUACAO
         - AGUARDANDO_INDICACAO_CONDUTOR
+        - CONDUTOR_INDICADO
         - AGUARDANDO_DEFESA_PREVIA
         - DEFESA_APRESENTADA
         - DEFESA_ACEITA
@@ -1378,13 +1382,20 @@ components:
         descricao: { type: string }
     AceiteAssincrono:
       type: object
-      description: Resposta de aceite assíncrono (202).
+      description: >-
+        Resposta de aceite assíncrono (202). Além de protocolo/situacao, carrega
+        o identificador do recurso afetado conforme a operação.
       required: [protocolo, situacao]
       properties:
         protocolo: { type: string }
         situacao:
           type: string
           description: Estado do recurso após o aceite (RENACH ou RENAINF).
+        numeroRenach: { type: string }
+        idExame: { type: string }
+        idJunta: { type: string }
+        numeroAit: { type: string }
+        quantidade: { type: integer }
 
     # -----------------------------------------------------------------------
     # RENACH — request schemas
@@ -1581,34 +1592,46 @@ components:
     ElegibilidadeExameResponse:
       type: object
       properties:
-        protocolo: { type: string }
         numeroRenach: { type: string }
-        situacao: { $ref: '#/components/schemas/SituacaoRenach' }
-        elegivel: { type: boolean }
-        motivo: { type: string }
+        tipoProcesso: { $ref: '#/components/schemas/TipoProcesso' }
+        elegivelExameMedico: { type: boolean }
+        exigeAvaliacaoPsicologica: { type: boolean }
+        motivos: { type: array, items: { type: string } }
     Agendamento:
       type: object
       properties:
         protocolo: { type: string }
         idAgendamento: { type: string }
         numeroRenach: { type: string }
-        situacao: { $ref: '#/components/schemas/SituacaoRenach' }
+        # sub-resource lifecycle (AGENDADO, REMARCADO, CHECKIN), not the process state
+        situacao: { type: string }
         dataHora: { type: string, format: date-time }
         codigoClinica: { type: string }
         cpfCondutor: { type: string }
     Exame:
       type: object
+      description: >-
+        Exame RENACH. The list read-back (GET .../exames) echoes the recorded
+        submission alongside the resource fields.
       properties:
         protocolo: { type: string }
         idExame: { type: string }
         numeroRenach: { type: string }
         situacao: { $ref: '#/components/schemas/SituacaoRenach' }
         resultado: { $ref: '#/components/schemas/ResultadoExame' }
+        tipoExame: { type: string }
         dataRealizacao: { type: string, format: date-time }
         dataValidade: { type: string, format: date }
         restricoes:
           type: array
           items: { $ref: '#/components/schemas/Restricao' }
+        idAgendamento: { type: string }
+        idJunta: { type: string }
+        clinica: { type: object }
+        examinador: { type: object }
+        condutor: { type: object }
+        processo: { type: object }
+        exame: { type: object }
       example:
         protocolo: RENACH-EXAME-2026-000045
         idExame: 6f1c2a80-0000-4000-8000-000000000045
@@ -1621,6 +1644,7 @@ components:
     ExameList:
       type: object
       properties:
+        quantidade: { type: integer }
         exames:
           type: array
           items: { $ref: '#/components/schemas/Exame' }
@@ -1631,6 +1655,7 @@ components:
         cnpj: { type: string }
         nome: { type: string }
         uf: { type: string }
+        credenciada: { type: boolean }
         ativa: { type: boolean }
       example:
         codigoClinica: RS-CLINIC-0001
@@ -1654,6 +1679,8 @@ components:
           enum: [CRM, CRP]
         numeroConselho: { type: string }
         uf: { type: string }
+        codigoClinica: { type: string }
+        credenciado: { type: boolean }
         ativo: { type: boolean }
       example:
         cpf: '89177194659'
@@ -1879,6 +1906,10 @@ components:
     # -----------------------------------------------------------------------
     AutoInfracao:
       type: object
+      description: >-
+        Auto de infração. The read-back (GET .../{numeroAit}) echoes the recorded
+        submission (veiculo/infracao/evidencias/agenteAutuador) alongside the
+        resource fields.
       properties:
         protocolo: { type: string }
         numeroAit: { type: string }
@@ -1887,6 +1918,10 @@ components:
         codigoInfracao: { type: string }
         dataInfracao: { type: string, format: date-time }
         placa: { type: string }
+        veiculo: { type: object }
+        infracao: { type: object }
+        agenteAutuador: { type: object }
+        evidencias: { type: array, items: { type: object } }
       example:
         protocolo: RENAINF-AIT-2026-000777
         numeroAit: A0001001
@@ -1903,6 +1938,7 @@ components:
         numeroAit: { type: string }
         situacao: { $ref: '#/components/schemas/SituacaoRenainf' }
         codigoOrgaoAutuador: { type: string }
+        valor: { type: number }
     Notificacao:
       type: object
       properties:
@@ -1910,6 +1946,7 @@ components:
         idNotificacao: { type: string }
         idProcesso: { type: string }
         situacao: { $ref: '#/components/schemas/SituacaoRenainf' }
+        tipoNotificacao: { type: string }
         dataNotificacao: { type: string, format: date-time }
         canal: { type: string }
     Recurso:
@@ -1927,7 +1964,9 @@ components:
       type: object
       properties:
         idProcesso: { type: string }
-        situacao: { $ref: '#/components/schemas/SituacaoRenainf' }
+        # debt-record payment status (EM_ABERTO, QUITADO), not the case state
+        situacaoPagamento: { type: string }
+        valor: { type: number }
         valorMulta: { type: number }
         valorAtualizado: { type: number }
         dataVencimento: { type: string, format: date }
@@ -1938,7 +1977,8 @@ components:
         protocolo: { type: string }
         idPagamento: { type: string }
         idProcesso: { type: string }
-        situacao: { $ref: '#/components/schemas/SituacaoRenainf' }
+        # payment-record status (PAGO, …), not the case state
+        situacao: { type: string }
         valorPago: { type: number }
         dataPagamento: { type: string, format: date-time }
         formaPagamento: { type: string }
@@ -1949,16 +1989,19 @@ components:
         protocolo: { type: string }
         idDispositivo: { type: string }
         codigoOrgaoAutuador: { type: string }
-        situacao: { $ref: '#/components/schemas/SituacaoRenainf' }
+        # device-record status (REGISTRADO, …), not the case state
+        situacao: { type: string }
         ativo: { type: boolean }
     FaixaNumeracaoAit:
       type: object
       properties:
         protocolo: { type: string }
+        idFaixa: { type: string }
         codigoOrgaoAutuador: { type: string }
         numeroInicial: { type: string }
         numeroFinal: { type: string }
-        situacao: { $ref: '#/components/schemas/SituacaoRenainf' }
+        # range-record status (RESERVADA, …), not the case state
+        situacao: { type: string }
     SincronizacaoTalonario:
       type: object
       properties:
@@ -1972,15 +2015,8 @@ components:
               descricaoInfracao: { type: string }
         orgaosAutuadores:
           type: array
-          items:
-            type: object
-            properties:
-              codigoOrgaoAutuador: { type: string }
-              nome: { type: string }
+          items: { type: object }
         municipios:
           type: array
-          items:
-            type: object
-            properties:
-              codigoMunicipio: { type: string }
-              nome: { type: string }
+          items: { type: object }
+        sincronizadoEm: { type: string, format: date-time }

@@ -1,120 +1,27 @@
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname, resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import request from 'supertest';
-import { parse } from 'yaml';
 import { createE2eApp, AUTH, type TestApp } from '../utils/e2e-app.js';
+import {
+  loadContract,
+  success2xxSchema,
+  validateAgainstSchema,
+  type JsonSchema,
+} from '../utils/schema-validate.js';
 
 /**
  * Contract conformance — every WSDenatran read endpoint is driven over real HTTP
  * with deterministic fixture params, and its response body is validated against
  * the schema the OpenAPI contract declares for that status. Because the schemas
  * carry no `required`/`additionalProperties`/`enum`, a permissive check is
- * worthless; this validator is STRICT — it fails on an undeclared field or a
- * type/format mismatch, which is exactly the view↔contract drift that would
- * mislead siblings (pec, teat). Success bodies validate against the operation's
- * 2xx schema; error bodies against ErrorResponse. No endpoint is silently
- * dropped: those whose params we cannot satisfy from fixtures are collected and
- * printed, and the covered count is asserted against a floor.
+ * worthless; the shared validator is STRICT — it fails on an undeclared field or
+ * a type/format mismatch, exactly the view↔contract drift that would mislead
+ * siblings (pec, teat). Success bodies validate against the operation's 2xx
+ * schema; error bodies against ErrorResponse. No endpoint is silently dropped:
+ * those whose params we cannot satisfy from fixtures are collected and printed,
+ * and the covered count is asserted against a floor.
  */
-
-type JsonSchema = {
-  $ref?: string;
-  type?: string;
-  format?: string;
-  properties?: Record<string, JsonSchema>;
-  items?: JsonSchema;
-};
-type Contract = {
-  paths: Record<
-    string,
-    Record<
-      string,
-      {
-        parameters?: unknown;
-        responses: Record<
-          string,
-          { content?: { 'application/json'?: { schema?: JsonSchema } } }
-        >;
-      }
-    >
-  >;
-  components: { schemas: Record<string, JsonSchema> };
-};
-
-const here = dirname(fileURLToPath(import.meta.url));
-const contract = parse(
-  readFileSync(
-    resolve(here, '../../docs/framework/contracts/openapi.yaml'),
-    'utf8',
-  ),
-) as Contract;
+const contract = loadContract('openapi.yaml');
 const schemas = contract.components.schemas;
-const deref = (s: JsonSchema): JsonSchema =>
-  s.$ref ? schemas[s.$ref.split('/').pop() as string] : s;
-
-const isoDate = /^\d{4}-\d{2}-\d{2}$/;
-const isoDateTime = /^\d{4}-\d{2}-\d{2}T/;
-
-/** Collect strict conformance violations of `value` against `schemaIn`. */
-function validate(
-  value: unknown,
-  schemaIn: JsonSchema,
-  path: string,
-  out: string[],
-): void {
-  const s = deref(schemaIn);
-  if (value === null || value === undefined) return; // absent is allowed
-  if (s.type === 'array' || s.items) {
-    if (!Array.isArray(value)) {
-      out.push(`${path}: expected array, got ${typeof value}`);
-      return;
-    }
-    const items = s.items ?? { type: 'string' };
-    value.forEach((v, i) => validate(v, items, `${path}[${i}]`, out));
-    return;
-  }
-  if (s.properties || s.type === 'object') {
-    if (typeof value !== 'object' || Array.isArray(value)) {
-      out.push(`${path}: expected object, got ${typeof value}`);
-      return;
-    }
-    const props = s.properties ?? {};
-    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-      if (!(k in props)) {
-        out.push(`${path}.${k}: undeclared field (not in contract schema)`);
-        continue;
-      }
-      validate(v, props[k], `${path}.${k}`, out);
-    }
-    return;
-  }
-  // primitives
-  if (s.type === 'integer' || s.type === 'number') {
-    if (typeof value !== 'number')
-      out.push(`${path}: expected ${s.type}, got ${typeof value}`);
-    else if (s.type === 'integer' && !Number.isInteger(value))
-      out.push(`${path}: expected integer, got ${value}`);
-    return;
-  }
-  if (s.type === 'boolean') {
-    if (typeof value !== 'boolean')
-      out.push(`${path}: expected boolean, got ${typeof value}`);
-    return;
-  }
-  // string (default)
-  if (typeof value !== 'string') {
-    out.push(`${path}: expected string, got ${typeof value}`);
-    return;
-  }
-  if (value !== '') {
-    if (s.format === 'date' && !isoDate.test(value))
-      out.push(`${path}: expected date (YYYY-MM-DD), got "${value}"`);
-    if (s.format === 'date-time' && !isoDateTime.test(value))
-      out.push(`${path}: expected date-time, got "${value}"`);
-  }
-}
 
 // Deterministic fixture values (see database/seed/manifest.json). The placa /
 // chassi / renavam / motor / cambio all belong to the SAME vehicle (IND1I01) so
@@ -139,15 +46,6 @@ const PARAMS: Record<string, string> = {
   nomeCondutor: 'MARIA SILVA 01',
   dataNascimento: '1985-03-14',
   nomeMae: 'JOANA SILVA',
-};
-
-const successSchema = (
-  op: Contract['paths'][string][string],
-): JsonSchema | undefined => {
-  const ok = Object.keys(op.responses).find((c) => c.startsWith('2'));
-  return ok
-    ? op.responses[ok].content?.['application/json']?.schema
-    : undefined;
 };
 
 let ctx: TestApp;
@@ -185,7 +83,9 @@ describe('contract conformance (read surface)', () => {
       covered++;
 
       const schema =
-        res.status >= 200 && res.status < 300 ? successSchema(op) : errorSchema;
+        res.status >= 200 && res.status < 300
+          ? success2xxSchema(op)
+          : errorSchema;
       if (!schema) {
         violations.push(`${url}: no schema declared for status ${res.status}`);
         continue;
@@ -195,7 +95,13 @@ describe('contract conformance (read surface)', () => {
       // (e.g. a bare `true` from a boolean endpoint) lands in res.text.
       const body =
         res.text && res.text.length ? JSON.parse(res.text) : res.body;
-      validate(body, schema, `${res.status} ${tmpl}`, violations);
+      validateAgainstSchema(
+        body,
+        schema,
+        schemas,
+        `${res.status} ${tmpl}`,
+        violations,
+      );
     }
 
     if (skipped.length)
