@@ -1,0 +1,44 @@
+{
+  "schemaVersion": "1.0.0",
+  "version": "1.0.0",
+  "id": "INV-RENAEST-001",
+  "domain": "RENAEST",
+  "severity": "gate",
+  "type": "state_machine",
+  "title": "RENAEST crash-record lifecycle and layout/completeness/duplicate rules",
+  "statement": "RENAEST transactional endpoints enforce the crash-record lifecycle (RECEBIDO → EM_ANALISE → {CONSOLIDADO|REJEITADO}) and its business rules. Rules RENAEST.E001–E005 are enforced: an unsupported `versaoLeiaute` yields 400 RENAEST.CRASH.INVALID_LAYOUT (E001); a COM_VITIMA_* gravidade with no `vitimas`, or a missing `local`, yields 402 RENAEST.CRASH.INCOMPLETE_DATA (E002/E003); a same-tuple (uf, codigoMunicipio, dataHoraSinistro, orgaoResponsavel) resubmit without an Idempotency-Key yields 402 RENAEST.CRASH.DUPLICATED (E004); a complement/correction on a terminal record yields 402 RENAEST.CRASH.CORRECTION_NOT_ALLOWED (E005); an unknown idSinistro/protocolo yields 404 RENAEST.CRASH.NOT_FOUND. Writes are idempotent and audited per INV-IDEMP-001.",
+  "rationale": "RENAEST is a national base that ingests crash/sinister records from state DETRANs and other agencies. The mock must behave like the national ingestion so pec/teat can exercise crash-submission, protocol-consultation and correction flows deterministically, including the rejection and duplicate branches, without touching real data.",
+  "status": "active",
+  "verification": {
+    "required_suites": ["e2e", "int"],
+    "oracle": "tests"
+  },
+  "authority": {
+    "docs": [
+      {
+        "doc": "docs/framework/arch/national-extensions-workflows.md",
+        "anchor": "renaest-crash-sinister-base"
+      },
+      {
+        "doc": "docs/framework/contracts/errors.md",
+        "anchor": "renaest-domain-codes-national-extension"
+      }
+    ]
+  },
+  "scope": {
+    "components": ["api", "renaest"],
+    "code_areas": ["domain/renaest/api/src/**", "database/ddl/23-renaest.sql"]
+  },
+  "change_policy": {
+    "breaking_change_requires": ["doc_update", "test_update", "human_approval"],
+    "test_weakening_allowed": false,
+    "human_approval_required": true
+  },
+  "tags": [
+    "renaest",
+    "state-machine",
+    "transactional",
+    "national-extension",
+    "D-0011"
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "schemaVersion": "1.0.0",
+  "version": "1.0.0",
+  "id": "INV-SNE-001",
+  "domain": "SNE",
+  "severity": "gate",
+  "type": "state_machine",
+  "title": "SNE adherence gating and electronic-notification delivery lifecycle",
+  "statement": "SNE transactional endpoints enforce adherence and the delivery lifecycle. Rules SNE.S001–S005: a non-adherent agency yields 402 SNE.AGENCY.NOT_ADHERED (S001); a non-adherent recipient (vehicle/citizen) yields 402 SNE.NOT_ADHERED (S002); a dataNotificacao more than 30 days after dataInfracao yields 402 SNE.NOTICE.DEADLINE_EXPIRED (S003, deterministic: body date vs derived deadline, never wall clock); a second notice for the same (numeroAit, tipoNotificacao) without an Idempotency-Key, or a cancellation of a terminal notice, yields 402 SNE.NOTIFICATION.INVALID_STATUS (S004); an unknown protocolo yields 404 SNE.NOTIFICATION.NOT_FOUND (S005). Delivery situação is ACEITA unless the channel is INDISPONIVEL (PENDENTE). Writes are idempotent and audited per INV-IDEMP-001.",
+  "rationale": "SNE is the national electronic-notification base. The mock must gate delivery on adherence and the legal deadline exactly like the real system so pec/teat can exercise the accepted/pending/rejected/expired branches deterministically without real data.",
+  "status": "active",
+  "verification": {
+    "required_suites": ["e2e", "int"],
+    "oracle": "tests"
+  },
+  "authority": {
+    "docs": [
+      {
+        "doc": "docs/framework/arch/national-extensions-workflows.md",
+        "anchor": "sne-electronic-notifications"
+      },
+      {
+        "doc": "docs/framework/contracts/errors.md",
+        "anchor": "sne-domain-codes-national-extension"
+      }
+    ]
+  },
+  "scope": {
+    "components": ["api", "sne"],
+    "code_areas": ["domain/sne/api/src/**", "database/ddl/24-sne.sql"]
+  },
+  "change_policy": {
+    "breaking_change_requires": ["doc_update", "test_update", "human_approval"],
+    "test_weakening_allowed": false,
+    "human_approval_required": true
+  },
+  "tags": [
+    "sne",
+    "state-machine",
+    "transactional",
+    "national-extension",
+    "D-0011"
+  ]
+}

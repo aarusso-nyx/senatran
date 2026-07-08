@@ -48,6 +48,22 @@ tags:
     description: RENAINF — defesas prévias, recursos e julgamentos
   - name: renainfPagamentos
     description: RENAINF — débitos e pagamentos
+  - name: renaestSinistros
+    description: >-
+      RENAEST — base nacional de sinistros/acidentes de trânsito (extensão
+      nacional; ver national-extensions-mapping.md)
+  - name: sneNotificacoes
+    description: >-
+      SNE — Sistema de Notificação Eletrônica: adesões e notificações de
+      autuação/penalidade (extensão nacional)
+  - name: cdtCidadao
+    description: >-
+      CDT — projeção de canal do cidadão sobre dados nacionais (SNE/RENAINF);
+      não é provedor de identidade (extensão nacional)
+  - name: detranBridge
+    description: >-
+      Bridge DETRAN estadual ↔ bases nacionais (RENAVAM/RENACH/RENAINF/RENAEST/
+      SNE); apenas semântica de base nacional (extensão nacional)
 
 paths:
   # ---------------------------------------------------------------------------
@@ -1247,6 +1263,843 @@ paths:
               schema: { $ref: '#/components/schemas/ErrorResponse' }
         '500': { $ref: '#/components/responses/ServerError' }
 
+  # ---------------------------------------------------------------------------
+  # RENAEST — base nacional de sinistros/acidentes de trânsito
+  # National extension ported into WSDenatran conventions; see
+  # national-extensions-mapping.md. Records are stateful (RECEBIDO → EM_ANALISE
+  # → {CONSOLIDADO|REJEITADO}); writes are idempotent and audited.
+  # ---------------------------------------------------------------------------
+  /renaest/sinistros:
+    post:
+      tags: [renaestSinistros]
+      operationId: submeterSinistroRenaest
+      summary: Submeter registro de sinistro
+      description: >-
+        Registra um sinistro/acidente na base nacional RENAEST e retorna o
+        `idSinistro` e o `protocolo`. Idempotente sob `Idempotency-Key`; um
+        reenvio da mesma tupla (uf, codigoMunicipio, dataHoraSinistro,
+        orgaoResponsavel) sem chave resulta em `RENAEST.CRASH.DUPLICATED`.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SinistroRequest' }
+      responses:
+        '201':
+          description: Criado. Sinistro recebido em situação RECEBIDO.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Sinistro' }
+        '400':
+          description: >-
+            Requisição inválida. `RENAEST.CRASH.INVALID_LAYOUT` — versão de
+            leiaute não suportada; ou corpo malformado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: >-
+            Erro de negócio. `RENAEST.CRASH.DUPLICATED` (reenvio duplicado sem
+            chave) ou `RENAEST.CRASH.INCOMPLETE_DATA` (dados de
+            vítima/local/gravidade obrigatórios ausentes).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /renaest/sinistros/lotes:
+    post:
+      tags: [renaestSinistros]
+      operationId: submeterLoteSinistrosRenaest
+      summary: Submeter lote de sinistros
+      description: >-
+        Registra um lote de sinistros em uma única transação e retorna o
+        `protocoloLote` e os `itens` criados. Idempotente sob `Idempotency-Key`.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SinistroLoteRequest' }
+      responses:
+        '201':
+          description: Criado. Lote recebido.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SinistroLoteResponse' }
+        '400':
+          description: >-
+            Requisição inválida. `RENAEST.CRASH.INVALID_LAYOUT` em algum item do
+            lote, ou corpo malformado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: >-
+            Erro de negócio. `RENAEST.CRASH.INCOMPLETE_DATA` ou
+            `RENAEST.CRASH.DUPLICATED` em algum item do lote.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /renaest/sinistros/{idSinistro}:
+    get:
+      tags: [renaestSinistros]
+      operationId: consultarSinistroRenaest
+      summary: Consultar sinistro por idSinistro
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: idSinistro
+          in: path
+          required: true
+          description: Identificador do registro de sinistro
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK. Registro de sinistro.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Sinistro' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404':
+          description: Não encontrado. `RENAEST.CRASH.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /renaest/protocolos/{protocolo}:
+    get:
+      tags: [renaestSinistros]
+      operationId: consultarProtocoloRenaest
+      summary: Consultar sinistro por protocolo
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - name: protocolo
+          in: path
+          required: true
+          description: Protocolo de transmissão do sinistro
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK. Registro de sinistro correspondente ao protocolo.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Sinistro' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404':
+          description: Não encontrado. `RENAEST.CRASH.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /renaest/sinistros/{idSinistro}/complementos:
+    post:
+      tags: [renaestSinistros]
+      operationId: complementarSinistroRenaest
+      summary: Submeter complemento a um sinistro
+      description: >-
+        Envia dados complementares vinculados a um sinistro existente. Não
+        permitido em situação terminal (`RENAEST.CRASH.CORRECTION_NOT_ALLOWED`).
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RetificacaoSinistroRequest' }
+      responses:
+        '202':
+          description: Aceito. Complemento em análise.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RetificacaoResponse' }
+        '400':
+          description: Requisição inválida. `RENAEST.CRASH.INVALID_LAYOUT`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: >-
+            Erro de negócio. `RENAEST.CRASH.CORRECTION_NOT_ALLOWED` — registro em
+            situação terminal.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Não encontrado. `RENAEST.CRASH.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /renaest/sinistros/{idSinistro}/correcoes:
+    post:
+      tags: [renaestSinistros]
+      operationId: corrigirSinistroRenaest
+      summary: Submeter correção a um sinistro
+      description: >-
+        Envia uma correção vinculada ao sinistro original. Não permitida em
+        situação terminal (`RENAEST.CRASH.CORRECTION_NOT_ALLOWED`).
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RetificacaoSinistroRequest' }
+      responses:
+        '202':
+          description: Aceito. Correção em análise.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RetificacaoResponse' }
+        '400':
+          description: Requisição inválida. `RENAEST.CRASH.INVALID_LAYOUT`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: >-
+            Erro de negócio. `RENAEST.CRASH.CORRECTION_NOT_ALLOWED` — registro em
+            situação terminal.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Não encontrado. `RENAEST.CRASH.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  # ---------------------------------------------------------------------------
+  # SNE — Sistema de Notificação Eletrônica (extensão nacional)
+  # ---------------------------------------------------------------------------
+  /sne/adesoes/veiculos/{placa}:
+    get:
+      tags: [sneNotificacoes]
+      operationId: consultarAdesaoVeiculoSne
+      summary: Consultar adesão do veículo ao SNE
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - { name: placa, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: OK. Situação de adesão do veículo.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdesaoSne' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /sne/adesoes/cidadaos/{cpf}:
+    get:
+      tags: [sneNotificacoes]
+      operationId: consultarAdesaoCidadaoSne
+      summary: Consultar adesão do cidadão ao SNE
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - { name: cpf, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: OK. Situação de adesão do cidadão.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdesaoSne' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /sne/orgaos/{codigoOrgaoAutuador}/adesao:
+    get:
+      tags: [sneNotificacoes]
+      operationId: consultarAdesaoOrgaoSne
+      summary: Consultar adesão do órgão autuador ao SNE
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - {
+            name: codigoOrgaoAutuador,
+            in: path,
+            required: true,
+            schema: { type: string },
+          }
+      responses:
+        '200':
+          description: OK. Situação de adesão do órgão.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdesaoSne' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /sne/notificacoes/autuacao:
+    post:
+      tags: [sneNotificacoes]
+      operationId: notificarAutuacaoSne
+      summary: Notificar autuação pelo SNE
+      description: >-
+        Emite uma notificação eletrônica de autuação. Exige órgão e destinatário
+        aderentes; a notificação fora do prazo legal é recusada.
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NotificacaoSneRequest' }
+      responses:
+        '201':
+          description: Criada. Notificação aceita ou pendente de entrega.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NotificacaoSne' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: >-
+            Erro de negócio. `SNE.AGENCY.NOT_ADHERED`, `SNE.NOT_ADHERED`,
+            `SNE.NOTICE.DEADLINE_EXPIRED` ou `SNE.NOTIFICATION.INVALID_STATUS`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /sne/notificacoes/penalidade:
+    post:
+      tags: [sneNotificacoes]
+      operationId: notificarPenalidadeSne
+      summary: Notificar penalidade pelo SNE
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NotificacaoSneRequest' }
+      responses:
+        '201':
+          description: Criada. Notificação aceita ou pendente de entrega.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NotificacaoSne' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: >-
+            Erro de negócio. `SNE.AGENCY.NOT_ADHERED`, `SNE.NOT_ADHERED`,
+            `SNE.NOTICE.DEADLINE_EXPIRED` ou `SNE.NOTIFICATION.INVALID_STATUS`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /sne/notificacoes/{protocolo}:
+    get:
+      tags: [sneNotificacoes]
+      operationId: consultarNotificacaoSne
+      summary: Consultar notificação SNE por protocolo
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - {
+            name: protocolo,
+            in: path,
+            required: true,
+            schema: { type: string },
+          }
+      responses:
+        '200':
+          description: OK. Notificação.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NotificacaoSne' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404':
+          description: Não encontrada. `SNE.NOTIFICATION.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /sne/notificacoes/{protocolo}/cancelamento:
+    post:
+      tags: [sneNotificacoes]
+      operationId: cancelarNotificacaoSne
+      summary: Cancelar notificação SNE
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - {
+            name: protocolo,
+            in: path,
+            required: true,
+            schema: { type: string },
+          }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CancelamentoSneRequest' }
+      responses:
+        '200':
+          description: OK. Notificação cancelada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CancelamentoSneResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: >-
+            Erro de negócio. `SNE.NOTIFICATION.INVALID_STATUS` — notificação em
+            situação terminal.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Não encontrada. `SNE.NOTIFICATION.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  # ---------------------------------------------------------------------------
+  # CDT — projeção de canal do cidadão (extensão nacional)
+  # ---------------------------------------------------------------------------
+  /cdt/cidadaos/{cpf}/notificacoes:
+    get:
+      tags: [cdtCidadao]
+      operationId: listarNotificacoesCidadaoCdt
+      summary: Notificações visíveis ao cidadão
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - { name: cpf, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: OK. Projeção de notificações do cidadão.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CdtNotificacoes' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404':
+          description: Não encontrado. `CDT.CITIZEN.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /cdt/cidadaos/{cpf}/infracoes:
+    get:
+      tags: [cdtCidadao]
+      operationId: listarInfracoesCidadaoCdt
+      summary: Infrações visíveis ao cidadão
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - { name: cpf, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: OK. Projeção de infrações do cidadão.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CdtInfracoes' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404':
+          description: Não encontrado. `CDT.CITIZEN.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /cdt/cidadaos/{cpf}/veiculos:
+    get:
+      tags: [cdtCidadao]
+      operationId: listarVeiculosCidadaoCdt
+      summary: Veículos visíveis ao cidadão
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - { name: cpf, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: OK. Projeção de veículos do cidadão.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CdtVeiculos' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404':
+          description: Não encontrado. `CDT.CITIZEN.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /cdt/cidadaos/{cpf}/cnh:
+    get:
+      tags: [cdtCidadao]
+      operationId: consultarCnhCidadaoCdt
+      summary: Resumo de CNH do cidadão
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - { name: cpf, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: OK. Resumo de CNH.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CdtCnh' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/BusinessError' }
+        '404':
+          description: Não encontrado. `CDT.CITIZEN.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /cdt/infracoes/{numeroAit}/pagamento:
+    get:
+      tags: [cdtCidadao]
+      operationId: consultarPagamentoInfracaoCdt
+      summary: Projeção de pagamento/desconto de uma infração
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - {
+            name: numeroAit,
+            in: path,
+            required: true,
+            schema: { type: string },
+          }
+      responses:
+        '200':
+          description: OK. Projeção de pagamento (boleto/desconto).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CdtPagamento' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: Erro de negócio. `CDT.DISCOUNT.NOT_AVAILABLE`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Não encontrada. `CDT.INFRACTION.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /cdt/infracoes/{numeroAit}/reconhecimento:
+    post:
+      tags: [cdtCidadao]
+      operationId: reconhecerInfracaoCdt
+      summary: Reconhecer infração (libera desconto por reconhecimento)
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - {
+            name: numeroAit,
+            in: path,
+            required: true,
+            schema: { type: string },
+          }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReconhecimentoRequest' }
+      responses:
+        '200':
+          description: OK. Infração reconhecida; desconto aplicado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReconhecimentoResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: >-
+            Erro de negócio. `CDT.RECOGNITION.NOT_ALLOWED` (situação terminal) ou
+            `CDT.DISCOUNT.NOT_AVAILABLE`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Não encontrada. `CDT.INFRACTION.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  # ---------------------------------------------------------------------------
+  # DETRAN bridge — estado ↔ bases nacionais (extensão nacional)
+  # ---------------------------------------------------------------------------
+  /detrans/{uf}/renavam/consultasVeiculo:
+    post:
+      tags: [detranBridge]
+      operationId: bridgeConsultarVeiculoDetran
+      summary: Bridge — consulta de veículo (RENAVAM) pelo DETRAN estadual
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - { name: uf, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BridgeRequest' }
+      responses:
+        '201':
+          description: Criado. Protocolo de bridge vinculado ao protocolo nacional.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BridgeResponse' }
+        '400':
+          description: Requisição inválida. `DETRAN.LAYOUT.INVALID`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: >-
+            Erro de negócio. `DETRAN.PROFILE.INACTIVE` ou `DETRAN.BRIDGE.REJECTED`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Não encontrado. `DETRAN.PROFILE.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /detrans/{uf}/renach/consultasCondutor:
+    post:
+      tags: [detranBridge]
+      operationId: bridgeConsultarCondutorDetran
+      summary: Bridge — consulta de condutor (RENACH) pelo DETRAN estadual
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - { name: uf, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BridgeRequest' }
+      responses:
+        '201':
+          description: Criado. Protocolo de bridge vinculado ao protocolo nacional.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BridgeResponse' }
+        '400':
+          description: Requisição inválida. `DETRAN.LAYOUT.INVALID`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: >-
+            Erro de negócio. `DETRAN.PROFILE.INACTIVE` ou `DETRAN.BRIDGE.REJECTED`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Não encontrado. `DETRAN.PROFILE.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /detrans/{uf}/renainf/autosInfracao:
+    post:
+      tags: [detranBridge]
+      operationId: bridgeEnviarAitDetran
+      summary: Bridge — envio de AIT (RENAINF) pelo DETRAN estadual
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - { name: uf, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BridgeRequest' }
+      responses:
+        '201':
+          description: Criado. Protocolo de bridge vinculado ao protocolo nacional.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BridgeResponse' }
+        '400':
+          description: Requisição inválida. `DETRAN.LAYOUT.INVALID`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: >-
+            Erro de negócio. `DETRAN.PROFILE.INACTIVE` ou `DETRAN.BRIDGE.REJECTED`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Não encontrado. `DETRAN.PROFILE.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /detrans/{uf}/renainf/autosInfracao/{numeroAit}:
+    get:
+      tags: [detranBridge]
+      operationId: bridgeConsultarAitDetran
+      summary: Bridge — consulta de AIT nacional pelo DETRAN estadual
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - { name: uf, in: path, required: true, schema: { type: string } }
+        - {
+            name: numeroAit,
+            in: path,
+            required: true,
+            schema: { type: string },
+          }
+      responses:
+        '200':
+          description: OK. AIT nacional com metadados de bridge.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BridgeResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: Erro de negócio. `DETRAN.PROFILE.INACTIVE`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Não encontrado. `DETRAN.PROFILE.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /detrans/{uf}/renaest/sinistros:
+    post:
+      tags: [detranBridge]
+      operationId: bridgeEnviarSinistroDetran
+      summary: Bridge — envio de sinistro (RENAEST) pelo DETRAN estadual
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - { name: uf, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BridgeRequest' }
+      responses:
+        '201':
+          description: Criado. Protocolo de bridge vinculado ao protocolo nacional.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BridgeResponse' }
+        '400':
+          description: Requisição inválida. `DETRAN.LAYOUT.INVALID`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: >-
+            Erro de negócio. `DETRAN.PROFILE.INACTIVE` ou `DETRAN.BRIDGE.REJECTED`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Não encontrado. `DETRAN.PROFILE.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /detrans/{uf}/sne/notificacoes:
+    post:
+      tags: [detranBridge]
+      operationId: bridgeEnviarNotificacaoDetran
+      summary: Bridge — envio de notificação (SNE) pelo DETRAN estadual
+      parameters:
+        - $ref: '#/components/parameters/XCpfUsuario'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - { name: uf, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BridgeRequest' }
+      responses:
+        '201':
+          description: Criado. Protocolo de bridge vinculado ao protocolo nacional.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BridgeResponse' }
+        '400':
+          description: Requisição inválida. `DETRAN.LAYOUT.INVALID`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402':
+          description: >-
+            Erro de negócio. `DETRAN.PROFILE.INACTIVE` ou `DETRAN.BRIDGE.REJECTED`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Não encontrado. `DETRAN.PROFILE.NOT_FOUND`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
 components:
   securitySchemes:
     clientCertificate:
@@ -2072,3 +2925,387 @@ components:
           type: array
           items: { type: object }
         sincronizadoEm: { type: string, format: date-time }
+
+    # -----------------------------------------------------------------------
+    # RENAEST — sinistros/acidentes (extensão nacional)
+    # -----------------------------------------------------------------------
+    GravidadeSinistro:
+      type: string
+      description: Gravidade do sinistro; dirige a regra de dados de vítima.
+      enum:
+        - SEM_VITIMA
+        - COM_VITIMA_FERIDA
+        - COM_VITIMA_FATAL
+    SituacaoRenaest:
+      type: string
+      description: Estado do registro de sinistro na máquina de estados RENAEST.
+      enum:
+        - RECEBIDO
+        - EM_ANALISE
+        - CONSOLIDADO
+        - REJEITADO
+    ReferenciasSinistro:
+      type: object
+      description: >-
+        Vínculos opcionais com as demais bases nacionais. O mock valida apenas a
+        forma; não resolve os identificadores contra bases reais.
+      properties:
+        renavam: { type: string }
+        cpfCondutor: { type: string }
+        numeroAit: { type: string }
+    SinistroRequest:
+      type: object
+      description: Dados para registrar um sinistro na base nacional RENAEST.
+      required: [dataHoraSinistro, uf, codigoMunicipio, gravidade]
+      properties:
+        dataHoraSinistro: { type: string, format: date-time }
+        uf: { type: string }
+        codigoMunicipio: { type: string }
+        gravidade: { $ref: '#/components/schemas/GravidadeSinistro' }
+        local: { type: string }
+        orgaoResponsavel: { type: string }
+        codigoTipoSinistro: { type: string }
+        condicoesVia: { type: string }
+        condicoesMeteorologicas: { type: string }
+        versaoLeiaute: { type: string }
+        dataTransmissao: { type: string, format: date-time }
+        veiculos:
+          type: array
+          items: { type: object }
+        pessoas:
+          type: array
+          items: { type: object }
+        vitimas:
+          type: array
+          items: { type: object }
+        referencias: { $ref: '#/components/schemas/ReferenciasSinistro' }
+      example:
+        dataHoraSinistro: '2024-02-11T19:05:00.000Z'
+        uf: SP
+        codigoMunicipio: '3550308'
+        gravidade: COM_VITIMA_FERIDA
+        local: KM 120 - via urbana
+        orgaoResponsavel: DETRAN-SP
+        condicoesVia: SECA
+        condicoesMeteorologicas: BOM
+        versaoLeiaute: '1.0'
+        vitimas:
+          - { gravidadeLesao: LEVE, tipoEnvolvido: CONDUTOR }
+        referencias:
+          renavam: '00123456780'
+    SinistroLoteRequest:
+      type: object
+      description: Lote de sinistros.
+      required: [sinistros]
+      properties:
+        sinistros:
+          type: array
+          items: { $ref: '#/components/schemas/SinistroRequest' }
+    RetificacaoSinistroRequest:
+      type: object
+      description: Complemento ou correção vinculado a um sinistro existente.
+      properties:
+        motivo: { type: string }
+        versaoLeiaute: { type: string }
+        gravidade: { type: string }
+        local: { type: string }
+        vitimas:
+          type: array
+          items: { type: object }
+        veiculos:
+          type: array
+          items: { type: object }
+        pessoas:
+          type: array
+          items: { type: object }
+        referencias: { $ref: '#/components/schemas/ReferenciasSinistro' }
+      example:
+        motivo: Ajuste de gravidade da vítima
+        gravidade: COM_VITIMA_FERIDA
+    Sinistro:
+      type: object
+      description: Registro de sinistro RENAEST (resposta).
+      properties:
+        protocolo: { type: string }
+        idSinistro: { type: string }
+        situacao: { $ref: '#/components/schemas/SituacaoRenaest' }
+        dataHoraSinistro: { type: string, format: date-time }
+        uf: { type: string }
+        codigoMunicipio: { type: string }
+        gravidade: { $ref: '#/components/schemas/GravidadeSinistro' }
+        local: { type: string }
+        orgaoResponsavel: { type: string }
+        codigoTipoSinistro: { type: string }
+        condicoesVia: { type: string }
+        condicoesMeteorologicas: { type: string }
+        veiculos:
+          type: array
+          items: { type: object }
+        pessoas:
+          type: array
+          items: { type: object }
+        vitimas:
+          type: array
+          items: { type: object }
+        referencias: { $ref: '#/components/schemas/ReferenciasSinistro' }
+        dataTransmissao: { type: string, format: date-time }
+      example:
+        protocolo: RENAEST-SEED-0000000002
+        idSinistro: SN00000000002
+        situacao: RECEBIDO
+        dataHoraSinistro: '2024-02-11T19:05:00.000Z'
+        uf: SP
+        codigoMunicipio: '3550308'
+        gravidade: COM_VITIMA_FERIDA
+        local: KM 120 - via urbana
+        orgaoResponsavel: DETRAN-SP
+        referencias:
+          renavam: '00123456780'
+    SinistroLoteResponse:
+      type: object
+      properties:
+        protocoloLote: { type: string }
+        quantidade: { type: integer }
+        situacao: { $ref: '#/components/schemas/SituacaoRenaest' }
+        itens:
+          type: array
+          items:
+            type: object
+            properties:
+              idSinistro: { type: string }
+              protocolo: { type: string }
+              situacao: { $ref: '#/components/schemas/SituacaoRenaest' }
+      example:
+        protocoloLote: RENAEST-6f1b2c3d
+        quantidade: 2
+        situacao: RECEBIDO
+        itens:
+          - {
+              idSinistro: SN70000000001,
+              protocolo: RENAEST-aa,
+              situacao: RECEBIDO,
+            }
+    RetificacaoResponse:
+      type: object
+      properties:
+        idRetificacao: { type: string }
+        idSinistro: { type: string }
+        tipo:
+          type: string
+          enum: [COMPLEMENTO, CORRECAO]
+        protocolo: { type: string }
+        situacao: { type: string }
+      example:
+        idRetificacao: 8b1c0e2a-1111-4d22-9a33-abcdef012345
+        idSinistro: SN00000000007
+        tipo: CORRECAO
+        protocolo: RENAEST-9f8e7d
+        situacao: RETIFICACAO_EM_ANALISE
+
+    # -----------------------------------------------------------------------
+    # SNE — notificações eletrônicas (extensão nacional)
+    # -----------------------------------------------------------------------
+    SituacaoSne:
+      type: string
+      enum: [ACEITA, PENDENTE, REJEITADA, CANCELADA, EXPIRADA]
+    CanalSne:
+      type: string
+      enum: [APP_CDT, EMAIL, SMS, INDISPONIVEL]
+    TipoNotificacaoSne:
+      type: string
+      enum: [AUTUACAO, PENALIDADE]
+    AdesaoSne:
+      type: object
+      description: Situação de adesão ao SNE (veículo, cidadão ou órgão).
+      properties:
+        placa: { type: string }
+        cpf: { type: string }
+        codigoOrgaoAutuador: { type: string }
+        aderido: { type: boolean }
+        canal: { type: string }
+      example:
+        placa: ABC1D23
+        aderido: true
+        canal: APP_CDT
+    NotificacaoSneRequest:
+      type: object
+      required: [numeroAit, codigoOrgaoAutuador]
+      properties:
+        numeroAit: { type: string }
+        codigoOrgaoAutuador: { type: string }
+        idProcesso: { type: string }
+        placa: { type: string }
+        cpfDestinatario: { type: string }
+        canal: { $ref: '#/components/schemas/CanalSne' }
+        dataInfracao: { type: string, format: date-time }
+        dataNotificacao: { type: string, format: date-time }
+        mensagem: { type: string }
+      example:
+        numeroAit: A0001001
+        codigoOrgaoAutuador: '204020'
+        placa: ABC1D23
+        cpfDestinatario: '52998224725'
+        canal: APP_CDT
+        dataInfracao: '2024-05-01T00:00:00.000Z'
+        dataNotificacao: '2024-05-10T00:00:00.000Z'
+    NotificacaoSne:
+      type: object
+      description: Notificação eletrônica SNE (resposta).
+      properties:
+        protocolo: { type: string }
+        numeroAit: { type: string }
+        idProcesso: { type: string }
+        tipoNotificacao: { $ref: '#/components/schemas/TipoNotificacaoSne' }
+        codigoOrgaoAutuador: { type: string }
+        placa: { type: string }
+        cpfDestinatario: { type: string }
+        situacao: { $ref: '#/components/schemas/SituacaoSne' }
+        canal: { $ref: '#/components/schemas/CanalSne' }
+        dataNotificacao: { type: string, format: date-time }
+        dataDisponibilizacao: { type: string, format: date-time }
+        dataCiencia: { type: string, format: date-time }
+        prazoLegal: { type: string, format: date-time }
+        mensagem: { type: string }
+      example:
+        protocolo: SNE-SEED-AUT-0001
+        numeroAit: A0001001
+        tipoNotificacao: AUTUACAO
+        codigoOrgaoAutuador: '204020'
+        placa: ABC1D23
+        cpfDestinatario: '52998224725'
+        situacao: ACEITA
+        canal: APP_CDT
+        dataNotificacao: '2024-05-01T10:00:00.000Z'
+    CancelamentoSneRequest:
+      type: object
+      properties:
+        motivo: { type: string }
+    CancelamentoSneResponse:
+      type: object
+      properties:
+        protocolo: { type: string }
+        situacao: { type: string }
+      example:
+        protocolo: SNE-SEED-AUT-0001
+        situacao: CANCELADA
+
+    # -----------------------------------------------------------------------
+    # CDT — projeção de canal do cidadão (extensão nacional)
+    # -----------------------------------------------------------------------
+    CdtNotificacoes:
+      type: object
+      properties:
+        cpf: { type: string }
+        notificacoes:
+          type: array
+          items: { type: object }
+    CdtInfracoes:
+      type: object
+      properties:
+        cpf: { type: string }
+        infracoes:
+          type: array
+          items: { type: object }
+    CdtVeiculos:
+      type: object
+      properties:
+        cpf: { type: string }
+        veiculos:
+          type: array
+          items: { type: object }
+    CdtCnh:
+      type: object
+      properties:
+        cpf: { type: string }
+        cnh: { type: object }
+    CdtPagamento:
+      type: object
+      description: Projeção de pagamento/desconto de uma infração no canal CDT.
+      properties:
+        numeroAit: { type: string }
+        cpf: { type: string }
+        situacao: { type: string }
+        valorOriginal: { type: number }
+        percentualDesconto: { type: integer }
+        valorComDesconto: { type: number }
+        boletoDisponivel: { type: boolean }
+        linhaDigitavel: { type: string }
+        dataVencimento: { type: string }
+        origem: { type: string }
+        protocoloSne: { type: string }
+        protocoloRenainf: { type: string }
+      example:
+        numeroAit: A0001001
+        cpf: '52998224725'
+        situacao: DISPONIVEL
+        valorOriginal: 293.47
+        percentualDesconto: 40
+        valorComDesconto: 176.08
+        boletoDisponivel: true
+        origem: RENAINF
+    ReconhecimentoRequest:
+      type: object
+      properties:
+        canal: { type: string }
+        cpf: { type: string }
+    ReconhecimentoResponse:
+      type: object
+      properties:
+        numeroAit: { type: string }
+        situacao: { type: string }
+        percentualDesconto: { type: integer }
+        valorOriginal: { type: number }
+        valorComDesconto: { type: number }
+        boletoDisponivel: { type: boolean }
+        linhaDigitavel: { type: string }
+      example:
+        numeroAit: A0001001
+        situacao: RECONHECIDA
+        percentualDesconto: 40
+        valorOriginal: 293.47
+        valorComDesconto: 176.08
+        boletoDisponivel: true
+
+    # -----------------------------------------------------------------------
+    # DETRAN bridge — estado ↔ bases nacionais (extensão nacional)
+    # -----------------------------------------------------------------------
+    BridgeRequest:
+      type: object
+      description: >-
+        Requisição de bridge do DETRAN estadual. `dados` carrega o payload
+        nacional específico; `codigoOrgao`/`versaoLeiaute` dirigem o perfil e a
+        validação de leiaute.
+      properties:
+        codigoOrgao: { type: string }
+        versaoLeiaute: { type: string }
+        placa: { type: string }
+        renavam: { type: string }
+        cpf: { type: string }
+        numeroAit: { type: string }
+        dados: { type: object }
+      example:
+        placa: ABC1D23
+        versaoLeiaute: '1.0'
+    BridgeResponse:
+      type: object
+      description: Protocolo de bridge vinculado ao protocolo da base nacional.
+      properties:
+        protocoloDetran: { type: string }
+        protocoloNacional: { type: string }
+        sistemaNacional: { type: string }
+        uf: { type: string }
+        codigoOrgao: { type: string }
+        perfilIntegracao: { type: string }
+        versaoLeiaute: { type: string }
+        numeroAit: { type: string }
+        situacao: { type: string }
+        retorno: { type: object }
+      example:
+        protocoloDetran: DTR-SP-70000000001
+        protocoloNacional: RENAVAM-70000000001
+        sistemaNacional: RENAVAM
+        uf: SP
+        codigoOrgao: '204020'
+        perfilIntegracao: PRODUCAO
+        versaoLeiaute: '1.0'
+        situacao: ACEITO

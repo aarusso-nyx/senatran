@@ -1,0 +1,45 @@
+{
+  "schemaVersion": "1.0.0",
+  "version": "1.0.0",
+  "id": "INV-DETRAN-001",
+  "domain": "DETRAN",
+  "severity": "gate",
+  "type": "state_machine",
+  "title": "State-DETRAN national-base bridge: profile, layout and rejection rules",
+  "statement": "The State-DETRAN bridge models a state agency acting against the national bases (RENAVAM/RENACH/RENAINF/RENAEST/SNE) ONLY — never UF-proprietary APIs. Rules DETRAN.D001–D004: an unknown UF profile yields 404 DETRAN.PROFILE.NOT_FOUND (D001); an inactive/suspended profile yields 402 DETRAN.PROFILE.INACTIVE (D002); a versaoLeiaute incompatible with the profile yields 400 DETRAN.LAYOUT.INVALID (D003); a profile still in homologation yields 402 DETRAN.BRIDGE.REJECTED (D004). A successful bridge mints a protocoloDetran linked to a protocoloNacional (situação ACEITO). Writes are idempotent and audited per INV-IDEMP-001.",
+  "rationale": "State DETRANs feed and consume the national bases; the mock must model that bridge — profile activation, layout compatibility, protocol linkage — deterministically, while staying strictly on national-base semantics (the municipal/tow/yard boundary is enforced by national-extensions-mapping.md).",
+  "status": "active",
+  "verification": {
+    "required_suites": ["e2e", "int"],
+    "oracle": "tests"
+  },
+  "authority": {
+    "docs": [
+      {
+        "doc": "docs/framework/arch/national-extensions-workflows.md",
+        "anchor": "state-detran-national-base-bridge"
+      },
+      {
+        "doc": "docs/framework/contracts/errors.md",
+        "anchor": "detran-bridge-domain-codes-national-extension"
+      }
+    ]
+  },
+  "scope": {
+    "components": ["api", "detran"],
+    "code_areas": ["domain/detran/api/src/**", "database/ddl/26-detran.sql"]
+  },
+  "change_policy": {
+    "breaking_change_requires": ["doc_update", "test_update", "human_approval"],
+    "test_weakening_allowed": false,
+    "human_approval_required": true
+  },
+  "tags": [
+    "detran",
+    "bridge",
+    "state-machine",
+    "transactional",
+    "national-extension",
+    "D-0011"
+  ]
+}

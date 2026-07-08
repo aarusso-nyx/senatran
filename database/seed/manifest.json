@@ -44,6 +44,30 @@
       "meaning": "402 → erro de negócio reservado."
     },
     {
+      "kind": "codigoMunicipio",
+      "value": "9999999",
+      "status": 500,
+      "meaning": "500 → RENAEST: fonte nacional indisponível (erro interno reservado). Use como codigoMunicipio ao submeter um sinistro."
+    },
+    {
+      "kind": "codigoOrgaoAutuador",
+      "value": "999999",
+      "status": 500,
+      "meaning": "500 → SNE/DETRAN: órgão autuador reservado (fonte indisponível)."
+    },
+    {
+      "kind": "numeroAit",
+      "value": "A0000500",
+      "status": 500,
+      "meaning": "500 → CDT: AIT reservado (fonte indisponível). Use em /v1/cdt/infracoes/{numeroAit}/*."
+    },
+    {
+      "kind": "uf",
+      "value": "ZZ",
+      "status": 500,
+      "meaning": "500 → DETRAN: UF reservada (fonte nacional indisponível)."
+    },
+    {
       "kind": "placa",
       "value": "ERR5A00",
       "status": 500,
@@ -151,6 +175,72 @@
     },
     "note": "GET /v1/renainf/autosInfracao/{numeroAit} returns `situacao` (the AIT-record status); `situacaoProcesso` is the administrative-case lifecycle state. Deadline 402s are deterministic (body date vs a derived/stored deadline, no wall clock): post an AutoInfracao with a late `dataTransmissao` for AIT.TRANSMISSION_EXPIRED; notify autuação with a late `dataNotificacao` for NOTICE.DEADLINE_EXPIRED; a defesa with `dataProtocolo` after the case `prazoDefesa` gives DEFENSE.LATE_SUBMISSION (fixture A0001001 carries a past prazoDefesa); an AutoInfracao with `canalNotificacao: SNE` on device DEV-0001 gives SNE.NOT_ADHERED."
   },
+  "renaest": {
+    "aceito": {
+      "idSinistro": "SN00000000001",
+      "protocolo": "RENAEST-SEED-0000000001",
+      "situacao": "RECEBIDO"
+    },
+    "comVeiculoRenavam": {
+      "idSinistro": "SN00000000002",
+      "renavam": "00123456780"
+    },
+    "comCondutor": {
+      "idSinistro": "SN00000000003",
+      "cpfCondutor": "52998224725"
+    },
+    "comInfracaoAit": {
+      "idSinistro": "SN00000000004",
+      "numeroAit": "A0001001"
+    },
+    "rejeitado": {
+      "idSinistro": "SN00000000005",
+      "situacao": "REJEITADO"
+    },
+    "pendente": {
+      "idSinistro": "SN00000000006",
+      "protocolo": "RENAEST-SEED-0000000006",
+      "situacao": "EM_ANALISE"
+    },
+    "comCorrecao": {
+      "idSinistro": "SN00000000007"
+    },
+    "magicMunicipio500": "9999999",
+    "note": "National crash/sinister base (national extension — national-extensions-mapping.md). GET a seeded crash by `aceito.idSinistro` or its `aceito.protocolo`. Writes: POST /v1/renaest/sinistros is idempotent under Idempotency-Key; a same-tuple (uf, codigoMunicipio, dataHoraSinistro, orgaoResponsavel) resubmit without a key gives RENAEST.CRASH.DUPLICATED (402). A body with `versaoLeiaute` other than \"1.0\" gives RENAEST.CRASH.INVALID_LAYOUT (400); a COM_VITIMA_* gravidade with no `vitimas`, or a missing `local`, gives RENAEST.CRASH.INCOMPLETE_DATA (402). Correcting/complementing the terminal `rejeitado.idSinistro` gives RENAEST.CRASH.CORRECTION_NOT_ALLOWED (402). Submitting with `codigoMunicipio: magicMunicipio500` forces a 500."
+  },
+  "sne": {
+    "veiculoAderente": "ABC1D23",
+    "veiculoNaoAderente": "IND1I01",
+    "cidadaoAderente": "52998224725",
+    "cidadaoNaoAderente": "11144477735",
+    "orgaoAderente": "204020",
+    "orgaoNaoAderente": "999998",
+    "notificacaoAceita": "SNE-SEED-AUT-0001",
+    "notificacaoPendente": "SNE-SEED-PEN-0002",
+    "notificacaoRejeitada": "SNE-SEED-REJ-0001",
+    "notificacaoExpirada": "SNE-SEED-EXP-0001",
+    "magicOrgao500": "999999",
+    "note": "Electronic-notification base (national extension). Check adherence via GET /v1/sne/adesoes/veiculos/{veiculoAderente} etc. Submit POST /v1/sne/notificacoes/autuacao|penalidade with an adherent `codigoOrgaoAutuador` + adherent `placa`/`cpfDestinatario`; a non-adherent agency gives SNE.AGENCY.NOT_ADHERED (402), a non-adherent recipient SNE.NOT_ADHERED (402). A `dataNotificacao` more than 30 days after `dataInfracao` gives SNE.NOTICE.DEADLINE_EXPIRED (402). Idempotent under Idempotency-Key; a second notice for the same (numeroAit, tipo) without a key gives SNE.NOTIFICATION.INVALID_STATUS (402). Cancelling a terminal notice (`notificacaoRejeitada`/`notificacaoExpirada`) gives SNE.NOTIFICATION.INVALID_STATUS. `codigoOrgaoAutuador: magicOrgao500` forces a 500."
+  },
+  "cdt": {
+    "cidadao": "52998224725",
+    "infracaoDesconto40": "A0001001",
+    "infracaoDesconto20": "A0001002",
+    "infracaoSemDesconto": "A0001003",
+    "infracaoBoletoIndisponivel": "A0001004",
+    "infracaoReconhecimentoNaoPermitido": "A0001005",
+    "magicAit500": "A0000500",
+    "note": "Citizen-channel projection (national extension) — NOT an identity provider. GET the citizen views under /v1/cdt/cidadaos/{cidadao}/{notificacoes|infracoes|veiculos|cnh}; an unknown CPF gives CDT.CITIZEN.NOT_FOUND (404). GET /v1/cdt/infracoes/{numeroAit}/pagamento returns the discount/boleto projection; `infracaoDesconto40`→40%, `infracaoDesconto20`→20%, `infracaoSemDesconto`→0%, `infracaoBoletoIndisponivel`→boletoDisponivel:false. POST /v1/cdt/infracoes/{numeroAit}/reconhecimento unlocks the 40% path; a no-discount/boleto-unavailable infraction gives CDT.DISCOUNT.NOT_AVAILABLE (402), and `infracaoReconhecimentoNaoPermitido` (situação PAGA) gives CDT.RECOGNITION.NOT_ALLOWED (402). `magicAit500` forces a 500."
+  },
+  "detran": {
+    "ufAtiva": "SP",
+    "ufInativa": "RJ",
+    "ufRejeitaBridge": "BA",
+    "bridgeProtocolo": "DTR-SP-SEED000001",
+    "numeroAitBridge": "A0001001",
+    "magicUf500": "ZZ",
+    "note": "State-DETRAN national-base bridge (national extension) — only national-base interactions, never UF-proprietary APIs. POST /v1/detrans/{ufAtiva}/renavam/consultasVeiculo etc. bridge to a national base and return a `protocoloDetran` linked to `protocoloNacional`. `ufInativa` gives DETRAN.PROFILE.INACTIVE (402); an unknown UF gives DETRAN.PROFILE.NOT_FOUND (404); a `versaoLeiaute` other than the profile version gives DETRAN.LAYOUT.INVALID (400); `ufRejeitaBridge` (profile in homologation) gives DETRAN.BRIDGE.REJECTED (402). GET /v1/detrans/{ufAtiva}/renainf/autosInfracao/{numeroAitBridge} reads the seeded bridge. `magicUf500` forces a 500."
+  },
   "counts": {
     "veiculos": 120,
     "condutores": 80,
@@ -159,6 +249,11 @@
     "profissionais": 40,
     "processosRenach": 41,
     "aitsRenainf": 61,
-    "dispositivos": 15
+    "dispositivos": 15,
+    "sinistrosRenaest": 7,
+    "adesoesSne": 6,
+    "notificacoesSne": 5,
+    "infracoesCdt": 5,
+    "perfisDetran": 3
   }
 }

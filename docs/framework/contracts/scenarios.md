@@ -36,6 +36,10 @@ may hardcode these values in tests; they are a stable part of the contract.
 |                        | cpf (path)             | `00000000500`                                   |
 |                        | cnpj (path)            | `00000000000500`                                |
 |                        | renavam (path)         | `00000000500`                                   |
+|                        | codigoMunicipio (body) | `9999999` (RENAEST — força 500 no submit)       |
+|                        | codigoOrgaoAutuador    | `999999` (SNE/DETRAN — força 500)               |
+|                        | numeroAit (path)       | `A0000500` (CDT — força 500)                    |
+|                        | uf (path)              | `ZZ` (DETRAN — força 500)                       |
 | **404** Not found      | any                    | _(no sentinel — use any absent well-formed id)_ |
 
 All sentinels are format-valid (placas follow the Mercosul `LLLNLNN` shape; CPF 11
@@ -70,6 +74,8 @@ never change across reseeds:
 | renach (processo)   | `RS123456789`       | at `AGUARDANDO_MEDICO`                         |
 | clínica credenciada | `RS-CLINIC-0001`    | credenciada + ativa                            |
 | AIT (RENAINF)       | `A0001001`          | AIT-record `situacao = AUTUACAO_ABERTA`        |
+| sinistro (RENAEST)  | `SN00000000001`     | aceito, `situacao = RECEBIDO`                  |
+| sinistro rejeitado  | `SN00000000005`     | terminal `REJEITADO` (correção não permitida)  |
 
 > The **authoritative, machine-readable** fixture list — including the
 > credentialed examiner CPF, exact counts, and every magic key — is emitted by
@@ -106,3 +112,48 @@ a RENACH process at `AGUARDANDO_MEDICO`, a RENAINF case at `NOTIFICADO_AUTUACAO`
 consumers can drive each transition deterministically; the exact fixtures (process
 number, credentialed clinic/examiner, AIT number and states) are enumerated in
 [`database/seed/manifest.json`](../../../database/seed/manifest.json).
+
+### RENAEST (national extension)
+
+RENAEST follows the same transactional pattern. Its scenarios are driven by state
+and the natural dedup key:
+
+- **Happy path** — `POST /v1/renaest/sinistros` with a complete body → `201`
+  `{ idSinistro, protocolo, situacao: RECEBIDO }`. `GET` it back by `idSinistro`
+  or `protocolo`.
+- **Idempotent replay** — repeating the submit with the same `Idempotency-Key`
+  returns the original `idSinistro`; without the header, a same-tuple resubmit
+  (uf, codigoMunicipio, dataHoraSinistro, orgaoResponsavel) → `402`
+  `RENAEST.CRASH.DUPLICATED`.
+- **Validation / completeness** — `versaoLeiaute` ≠ `1.0` → `400`
+  `RENAEST.CRASH.INVALID_LAYOUT`; a `COM_VITIMA_*` gravidade with no `vitimas`
+  (or a missing `local`) → `402` `RENAEST.CRASH.INCOMPLETE_DATA`.
+- **Terminal record** — complement/correction on `SN00000000005` (`REJEITADO`) →
+  `402` `RENAEST.CRASH.CORRECTION_NOT_ALLOWED`.
+- **Forced 500** — submit with `codigoMunicipio: 9999999` → `500`.
+
+The seeded crashes cross-link existing fixtures (vehicle `renavam 00123456780`,
+condutor `52998224725`, AIT `A0001001`); all are enumerated under `renaest` in
+[`database/seed/manifest.json`](../../../database/seed/manifest.json).
+
+### SNE / CDT / DETRAN (national extensions)
+
+Same state-and-fixture pattern. Highlights (full detail + every key under `sne` /
+`cdt` / `detran` in `manifest.json`, and the rule tables in `errors.md` /
+`../arch/national-extensions-workflows.md`):
+
+- **SNE** — check adherence (`GET /v1/sne/adesoes/…`), then `POST
+/v1/sne/notificacoes/autuacao` with an adherent agency + recipient → `201`
+  `ACEITA`. Non-adherent agency → `SNE.AGENCY.NOT_ADHERED`; non-adherent
+  recipient → `SNE.NOT_ADHERED`; late `dataNotificacao` →
+  `SNE.NOTICE.DEADLINE_EXPIRED`; duplicate/terminal cancel →
+  `SNE.NOTIFICATION.INVALID_STATUS`. Adherent fixtures: veículo `ABC1D23`,
+  cidadão `52998224725`, órgão `204020`.
+- **CDT** — citizen views under `/v1/cdt/cidadaos/{cpf}/…` (`52998224725`);
+  unknown CPF → `CDT.CITIZEN.NOT_FOUND`. Discount projection per infraction:
+  `A0001001` (40%), `A0001002` (20%), `A0001003` (none), `A0001004` (boleto
+  unavailable), `A0001005` (recognition not allowed).
+- **DETRAN bridge** — `POST /v1/detrans/{uf}/…`; UF `SP` active, `RJ` inactive
+  (`DETRAN.PROFILE.INACTIVE`), `BA` rejects (`DETRAN.BRIDGE.REJECTED`), unknown UF
+  → `DETRAN.PROFILE.NOT_FOUND`, mismatched `versaoLeiaute` →
+  `DETRAN.LAYOUT.INVALID`.

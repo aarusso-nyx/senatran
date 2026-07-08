@@ -156,3 +156,30 @@ DDL and views are small and uniform, and shaping stays in SQL — D-0003's princ
 (thin controllers over prepared views) is preserved. Transactional entities use the
 same shape plus mutable `situacao`/FK columns the services update. Reference tables
 (`ref_*`) remain normalized (small, hand-seeded, used by the generator).
+
+---
+
+## D-0011 — National-base extensions (RENAEST/SNE/CDT/DETRAN bridge)
+
+**Context.** Beyond the read (WSDenatran) and ported RENACH/RENAINF surfaces, the
+mock must also stand in for other **national SENATRAN/SERPRO-facing bases** that
+`pec`/`teat` integrate against: RENAEST (crashes), SNE (electronic notifications),
+CDT (citizen-channel projection) and a State-DETRAN national-base bridge. Unlike
+D-0009, these have **no reference corpus** under `docs/reference/`.
+
+**Decision.** Add them as **proposed national extensions** that reuse every
+existing convention (D-0002 envelope, D-0004 auth, D-0005 magic keys, D-0009
+transactional pattern: state machine + idempotency + audit), served by the same
+app and published in the **same** `openapi-transactional.yaml` (not a separate
+contract file). The boundary — national-base semantics in, municipal/tow/yard/
+provider/UF-proprietary out — is the authority of `national-extensions-mapping.md`;
+behavior lives in `national-extensions-workflows.md` with one invariant per surface
+(`INV-RENAEST-001`, then SNE/CDT/DETRAN). Where a specific endpoint's real-world
+SENATRAN ownership is uncertain, it is documented as _proposed_ and kept
+deterministic/dev-only — never pointed at a real system.
+
+**Consequences.** One convention everywhere; consumers keep one auth + one error
+model. Surfaces land incrementally (RENAEST first) as full vertical slices (DDL →
+seed+manifest → contract → service → invariant/docs → tests). `openapi:check`
+enforces controller↔contract parity so each surface's routes and contract stay in
+lockstep.
