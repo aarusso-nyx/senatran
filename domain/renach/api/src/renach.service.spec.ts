@@ -24,6 +24,35 @@ describe('RenachService', () => {
     });
   });
 
+  it('consultarProcessos → 400 when cpf is missing', async () => {
+    const { svc } = make(() => ({ rows: [] }));
+    await expect(svc.consultarProcessos('')).rejects.toMatchObject({
+      returnCode: 400,
+    });
+  });
+
+  it('consultarProcessos → wraps active processes in { processos }', async () => {
+    const { svc } = make((sql) =>
+      sql.includes('from renach.processo')
+        ? {
+            rows: [
+              {
+                payload: {
+                  numeroRenach: 'RS1',
+                  situacao: 'AGUARDANDO_MEDICO',
+                },
+              },
+            ],
+          }
+        : { rows: [] },
+    );
+    await expect(
+      svc.consultarProcessos('52998224725', 'RENOVACAO'),
+    ).resolves.toEqual({
+      processos: [{ numeroRenach: 'RS1', situacao: 'AGUARDANDO_MEDICO' }],
+    });
+  });
+
   it('registrarExame → 404 when process unknown', async () => {
     const { svc } = make((sql) =>
       sql.includes('from renach.processo') ? { rows: [] } : { rows: [] },

@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Res,
 } from '@nestjs/common';
 import type { Response } from 'express';
@@ -42,6 +43,14 @@ export class RenachController {
     @Res({ passthrough: true }) res: Response,
   ) {
     return this.send(res, await this.svc.abrirProcesso({ ...body }, key));
+  }
+
+  @Get('processos')
+  consultarProcessos(
+    @Query('cpf') cpf: string,
+    @Query('tipoProcesso') tipoProcesso?: string,
+  ) {
+    return this.svc.consultarProcessos(cpf, tipoProcesso);
   }
 
   @Get('processos/:numeroRenach')

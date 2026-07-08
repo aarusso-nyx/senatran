@@ -119,6 +119,11 @@ describe('transactional contract conformance', () => {
 
     check(
       'get',
+      '/renach/processos',
+      await get(`/v1/renach/processos?cpf=${cpf}&tipoProcesso=RENOVACAO`),
+    );
+    check(
+      'get',
       '/renach/processos/{numeroRenach}',
       await get(`/v1/renach/processos/${numero}`),
     );
