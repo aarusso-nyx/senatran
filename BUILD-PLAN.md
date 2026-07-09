@@ -20,45 +20,64 @@ record. Reference signals: `docs/framework/contracts/openapi.yaml` (read) +
   read modules; RENACH/RENAINF transactional modules (state machine, idempotency,
   audit). `EV-ace00b…`.
 - **P5 (tests): complete.** 122 tests — unit 63 (88% line coverage, gate ≥70%),
-  integration 8, e2e 51. CI workflow added. All phases done.
+  integration 8, e2e 51. CI workflow added.
+- **P6 (national extensions): complete.** Four national-base surfaces added
+  (RENAEST crash/sinister, SNE electronic notifications, CDT citizen-channel
+  projection, State-DETRAN national-base bridge — **25 endpoints**), same
+  conventions, merged in PR #3. Invariants INV-RENAEST/SNE/CDT/DETRAN-001 (D-0011);
+  boundary in `national-extensions-mapping.md`; behaviour in
+  `national-extensions-workflows.md`. Totals now **114 endpoints**; tests **245**
+  (unit 119, integration 14, e2e 112) green; `openapi:check` 0 drift. All phases done.
 
 ## Locked decisions
 
 pnpm 9 + Node 24 · header-simulation auth (all endpoints) · data-driven + magic-key
 scenarios · full DEVAI tier3 bootstrap · standalone plain `pg` · thin controllers
 over `contract.*` views for reads · transactional RENACH/RENAINF unified under
-WSDenatran conventions (D-0009). See `DESIGN-DECISIONS.md`.
+WSDenatran conventions (D-0009) · national-base extensions (RENAEST/SNE/CDT/DETRAN)
+under the same conventions and contract file (D-0011). See `DESIGN-DECISIONS.md`.
 
-## Surface — 87 endpoints under `/v1`, one convention
+## Surface — 114 endpoints under `/v1`, one convention
 
 **Read (WSDenatran, 57 GET).** `veiculos` (20), `condutores` (12), `infracoes`
 (10), `indicadores` (8), `ConsultaCSV` (2), `restricoesJudiciaisAtivas` (2),
 `rouboFurto` (2), `autorizacoesAlteracaoVeiculo` (1). Cursor pagination
 (`idUltimoRegistro`). → `openapi.yaml`.
 
-**Transactional (RENACH/RENAINF, 30).** RENACH (13: processos, elegibilidade,
-agendamentos, exames médicos/psicológicos, junta, clínicas/profissionais) + RENAINF
-(17: talonário, AITs, processos administrativos, autuação, defesa, penalidade,
-recurso JARI/2ª instância, débito, pagamento). Stateful (state machines + rules
-R001–R012), idempotent, audited. → `openapi-transactional.yaml`,
-`canonical-mapping.md`, `renach-renainf-workflows.md`.
+**Transactional (RENACH/RENAINF, 32).** RENACH (processos + active-process lookup,
+elegibilidade, agendamentos, exames médicos/psicológicos, junta,
+clínicas/profissionais) + RENAINF (talonário, AITs, processos administrativos,
+autuação, defesa, penalidade, recurso JARI/2ª instância, débito, pagamento).
+Stateful (state machines + rules R001–R012), idempotent, audited. →
+`openapi-transactional.yaml`, `canonical-mapping.md`, `renach-renainf-workflows.md`.
 
-**Common (both):** base `/v1`; `x-cpf-usuario` + cert sim; `{ returnCode, message }`
+**National extensions (RENAEST/SNE/CDT/DETRAN, 25).** RENAEST (6: sinistros
+submit/batch/consult/complement/correct), SNE (7: adesões + notificações de
+autuação/penalidade + cancelamento), CDT (6: projeções do cidadão + pagamento/
+desconto + reconhecimento), State-DETRAN bridge (6: RENAVAM/RENACH/RENAINF/RENAEST/
+SNE). Same conventions; stateful, idempotent, audited; deterministic fixtures. →
+`openapi-transactional.yaml`, `national-extensions-mapping.md`,
+`national-extensions-workflows.md`. **Out of scope:** municipal/tow-yard/provider
+and UF-proprietary APIs stay in the consuming repos.
+
+**Common (all):** base `/v1`; `x-cpf-usuario` + cert sim; `{ returnCode, message }`
 on 400/401/402/404/500 (business rules → 402); Portuguese camelCase fields.
 
 ## Phases
 
-| Phase            | Tasks | Output                                                                                                                            | Gate            |
-| ---------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------- | --------------- |
-| **P0 Bootstrap** | 1–5   | repo, deps, dirs, governance docs, `.devai/`, NestJS boots                                                                        | doctor 6/6 ✔    |
-| **P1 Contract**  | 6     | `openapi.yaml` (57 read) + `openapi-transactional.yaml` (30) + auth/scenarios/errors                                              | `openapi:check` |
-| **P2 Design**    | 7–9   | data model (read + transactional schemas) + view catalog + mock-data + workflows, consolidated                                    | review          |
-| **P3 Database**  | 10    | `database/ddl/*` (read tables/views/matviews **+** renach/renainf/audit tables) + seed generator, applies                         | `db:reset`      |
-| **P4 Services**  | 11    | 8 read modules (thin, over views) **+** renach/renainf transactional modules (state machine, idempotency, audit) + guard + filter | `pnpm check`    |
-| **P5 Tests**     | 12    | unit + db + api + e2e (incl. RENACH/RENAINF workflows) green; coverage; scorecard                                                 | Cycle C         |
+| Phase            | Tasks | Output                                                                                                                             | Gate              |
+| ---------------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| **P0 Bootstrap** | 1–5   | repo, deps, dirs, governance docs, `.devai/`, NestJS boots                                                                         | doctor 6/6 ✔      |
+| **P1 Contract**  | 6     | `openapi.yaml` (57 read) + `openapi-transactional.yaml` (30) + auth/scenarios/errors                                               | `openapi:check`   |
+| **P2 Design**    | 7–9   | data model (read + transactional schemas) + view catalog + mock-data + workflows, consolidated                                     | review            |
+| **P3 Database**  | 10    | `database/ddl/*` (read tables/views/matviews **+** renach/renainf/audit tables) + seed generator, applies                          | `db:reset`        |
+| **P4 Services**  | 11    | 8 read modules (thin, over views) **+** renach/renainf transactional modules (state machine, idempotency, audit) + guard + filter  | `pnpm check`      |
+| **P5 Tests**     | 12    | unit + db + api + e2e (incl. RENACH/RENAINF workflows) green; coverage; scorecard                                                  | Cycle C           |
+| **P6 National**  | 13    | RENAEST/SNE/CDT/DETRAN surfaces (DDL + views, services, seed + manifest, contract, invariants, docs, tests) — additive, no regress | `pnpm check` + CI |
 
 **Review checkpoints:** P1 and P2 reviewed. Transposition folds the transactional
-surface into P3–P5 (both surfaces implemented together).
+surface into P3–P5 (both surfaces implemented together). P6 (national extensions)
+was reviewed and merged incrementally (RENAEST first, then SNE/CDT/DETRAN) in PR #3.
 
 ## Design summary (finalized in P2 — see `docs/framework/arch/`)
 
@@ -87,7 +106,8 @@ surface into P3–P5 (both surfaces implemented together).
   magic-key sentinels.
 - **Invariants:** 9 reference-signal units in `docs/framework/arch/invariants/`
   (AUTH, HTTP, API, DATA, SCEN, SEC + RENACH, RENAINF, IDEMP for the transactional
-  surface), traced in `trace.json`.
+  surface), traced in `trace.json`. P6 adds 4 more (RENAEST, SNE, CDT, DETRAN) —
+  13 total.
 
 ## Test pyramid (P5)
 
