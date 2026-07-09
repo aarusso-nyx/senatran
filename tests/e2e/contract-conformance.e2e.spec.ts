@@ -37,6 +37,7 @@ const PARAMS: Record<string, string> = {
   cnpj: '11444777000161',
   numeroRegistro: '01234567890',
   numeroRegistroCnh: '01234567890',
+  numeroSeguranca: '000000001', // fixture condutor CNH security number
   cnh: '01234567890',
   pgu: 'PGU0000001',
   pid: 'PID0000001',

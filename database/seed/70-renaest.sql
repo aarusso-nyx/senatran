@@ -9,5 +9,5 @@ insert into renaest.sinistro (id_sinistro, protocolo, chave_natural, situacao, u
   ('SN00000000007', 'RENAEST-SEED-0000000007', 'SP|3550308|2024-04-10T09:00:00.000Z|DETRAN-SP', 'RECEBIDO', 'SP', '3550308', '2024-04-10T09:00:00.000Z', 'COM_VITIMA_FERIDA', 'DETRAN-SP', null, null, null, '{"protocolo":"RENAEST-SEED-0000000007","idSinistro":"SN00000000007","situacao":"RECEBIDO","dataHoraSinistro":"2024-04-10T09:00:00.000Z","uf":"SP","codigoMunicipio":"3550308","gravidade":"COM_VITIMA_FERIDA","local":"KM 107 - via urbana","orgaoResponsavel":"DETRAN-SP","codigoTipoSinistro":null,"condicoesVia":"SECA","condicoesMeteorologicas":"BOM","veiculos":[],"pessoas":[],"vitimas":[{"gravidadeLesao":"LEVE","tipoEnvolvido":"CONDUTOR"}],"referencias":null,"dataTransmissao":"2024-04-10T09:00:00.000Z"}'::jsonb);
 
 insert into renaest.retificacao (id, id_sinistro, protocolo, tipo, situacao, payload) values
-  ('c93dc71e-fe61-4211-94b2-1f3f9950dbe9', 'SN00000000007', 'RENAEST-SEED-COR-0000007', 'CORRECAO', 'EM_ANALISE', '{"motivo":"Ajuste de gravidade da vítima","gravidade":"COM_VITIMA_FERIDA"}'::jsonb);
+  ('9fddac71-6ccd-4588-b81f-16a96e76ad3a', 'SN00000000007', 'RENAEST-SEED-COR-0000007', 'CORRECAO', 'EM_ANALISE', '{"motivo":"Ajuste de gravidade da vítima","gravidade":"COM_VITIMA_FERIDA"}'::jsonb);
 

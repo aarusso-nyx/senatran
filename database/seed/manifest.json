@@ -135,6 +135,7 @@
       "cpf": "52998224725",
       "registro": "01234567890",
       "numeroRenach": "RN0000000001",
+      "numeroSeguranca": "000000001",
       "nome": "MARIA SILVA 01",
       "dataNascimento": "1985-03-14"
     }
@@ -144,17 +145,17 @@
       "numeroRenach": "RS123456789",
       "cpf": "52998224725",
       "situacao": "AGUARDANDO_MEDICO",
-      "tipoProcesso": "RENOVACAO"
+      "tipoProcesso": "PRIMEIRA_HABILITACAO"
     },
     "clinicaCredenciada": {
       "codigoClinica": "RS-CLINIC-0001",
-      "cnpj": "93773621000199",
-      "uf": "MA"
+      "cnpj": "84288955000186",
+      "uf": "RO"
     },
     "examinadorCredenciado": {
-      "cpf": "60240903315",
+      "cpf": "91169709770",
       "conselho": "CRM",
-      "uf": "MA"
+      "uf": "RO"
     }
   },
   "renainf": {
@@ -162,10 +163,10 @@
       "numeroAit": "A0001001",
       "situacao": "AUTUACAO_ABERTA",
       "situacaoProcesso": "NOTIFICADO_AUTUACAO",
-      "codigoOrgaoAutuador": "447010",
-      "placa": "EXD4A36",
-      "codigoInfracao": "56355",
-      "prazoDefesa": "2024-08-31T11:57:00.000Z"
+      "codigoOrgaoAutuador": "999999",
+      "placa": "XKT7S66",
+      "codigoInfracao": "55013",
+      "prazoDefesa": "2024-10-13T15:42:00.000Z"
     },
     "dispositivoNaoAderenteSne": "DEV-0001",
     "prazosDias": {

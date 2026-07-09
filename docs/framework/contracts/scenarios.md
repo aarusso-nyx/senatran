@@ -62,20 +62,21 @@ The seed guarantees a small set of **stable** identifiers with full, documented
 payloads that consumers may hardcode. These are emitted first by the generator and
 never change across reseeds:
 
-| Kind                | Value               | Notes                                          |
-| ------------------- | ------------------- | ---------------------------------------------- |
-| placa (Mercosul)    | `ABC1D23`           | vehicle with owner, indicators clear           |
-| placa (legacy)      | `ABC1234`           | legacy-format plate, CNPJ owner                |
-| placa (indicadores) | `IND1I01`           | alarme + roubo/furto + transferência + penhora |
-| chassi              | `9BWZZZ377VT004251` | linked to `ABC1D23`                            |
-| renavam             | `00123456780`       | linked to `ABC1D23`                            |
-| cpf (condutor)      | `52998224725`       | driver with CNH; also owner of `ABC1D23`       |
-| cnpj (proprietário) | `11444777000161`    | company owner of `ABC1234`                     |
-| renach (processo)   | `RS123456789`       | at `AGUARDANDO_MEDICO`                         |
-| clínica credenciada | `RS-CLINIC-0001`    | credenciada + ativa                            |
-| AIT (RENAINF)       | `A0001001`          | AIT-record `situacao = AUTUACAO_ABERTA`        |
-| sinistro (RENAEST)  | `SN00000000001`     | aceito, `situacao = RECEBIDO`                  |
-| sinistro rejeitado  | `SN00000000005`     | terminal `REJEITADO` (correção não permitida)  |
+| Kind                | Value               | Notes                                                                         |
+| ------------------- | ------------------- | ----------------------------------------------------------------------------- |
+| placa (Mercosul)    | `ABC1D23`           | vehicle with owner, indicators clear                                          |
+| placa (legacy)      | `ABC1234`           | legacy-format plate, CNPJ owner                                               |
+| placa (indicadores) | `IND1I01`           | alarme + roubo/furto + transferência + penhora                                |
+| chassi              | `9BWZZZ377VT004251` | linked to `ABC1D23`                                                           |
+| renavam             | `00123456780`       | linked to `ABC1D23`                                                           |
+| cpf (condutor)      | `52998224725`       | driver with CNH; also owner of `ABC1D23`                                      |
+| numeroSeguranca     | `000000001`         | CNH security nº for `52998224725` / `01234567890` (validacao/imagens/retrato) |
+| cnpj (proprietário) | `11444777000161`    | company owner of `ABC1234`                                                    |
+| renach (processo)   | `RS123456789`       | at `AGUARDANDO_MEDICO`                                                        |
+| clínica credenciada | `RS-CLINIC-0001`    | credenciada + ativa                                                           |
+| AIT (RENAINF)       | `A0001001`          | AIT-record `situacao = AUTUACAO_ABERTA`                                       |
+| sinistro (RENAEST)  | `SN00000000001`     | aceito, `situacao = RECEBIDO`                                                 |
+| sinistro rejeitado  | `SN00000000005`     | terminal `REJEITADO` (correção não permitida)                                 |
 
 > The **authoritative, machine-readable** fixture list — including the
 > credentialed examiner CPF, exact counts, and every magic key — is emitted by

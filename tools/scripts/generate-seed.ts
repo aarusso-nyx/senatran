@@ -506,6 +506,7 @@ const noInd = (): Record<string, boolean> => ({
 // Fixtures (stable, emitted first).
 const FIX_CPF = '52998224725'; // valid CPF (fixed)
 const FIX_CNPJ = '11444777000161'; // valid CNPJ (fixed)
+const FIX_SEGURANCA = '000000001'; // fixture CNH security number (condutor_imagem)
 vehicles.push({
   placa: 'ABC1D23',
   chassi: '9BWZZZ377VT004251',
@@ -751,11 +752,17 @@ for (let i = drivers.length; i < DRV; i++) {
 
   // condutor_imagem (subset of drivers)
   const imgRows = drivers.slice(0, 40).map((d) => {
-    const seg = rng.digits(9);
+    // Draw unconditionally to keep the PRNG stream stable; the fixture condutor
+    // gets a stable, published numeroSeguranca (manifest.read.condutor).
+    const segRaw = rng.digits(9);
+    const seg = d.cpf === FIX_CPF ? FIX_SEGURANCA : segRaw;
+    // Anchor identity to the condutor so the imagem is coherent with the driver.
     const ctx = {
       cpf: d.cpf,
       numeroRegistro: d.registro,
       numeroSeguranca: seg,
+      nomeCondutor: d.nome,
+      dataNascimento: `${d.dataNascimento}T00:00:00.000Z`,
     } as Record<string, string>;
     return [
       sqlStr(d.cpf),
@@ -2096,6 +2103,7 @@ const auditEvt = (
         cpf: drv.cpf,
         registro: drv.registro,
         numeroRenach: drv.renach,
+        numeroSeguranca: FIX_SEGURANCA,
         nome: drv.nome,
         dataNascimento: drv.dataNascimento,
       },
