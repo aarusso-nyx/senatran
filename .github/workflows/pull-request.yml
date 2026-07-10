@@ -50,7 +50,7 @@ jobs:
       DB_PASSWORD: postgres
       DB_NAME: senatran
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6.0.2
       # No `version:` here — pnpm/action-setup@v4 reads the pinned version from
       # package.json `packageManager`. Passing both trips ERR_PNPM_BAD_PM_VERSION
       # ("Multiple versions of pnpm specified").
