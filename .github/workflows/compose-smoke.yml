@@ -4,8 +4,40 @@ name: compose-smoke
 # then smoke-tests the running mock end to end (deploy-shaped integration).
 on:
   pull_request:
+    # Kept in sync with pull-request.yml's paths-ignore — see that file for
+    # why docs/framework/contracts/** is deliberately not excluded.
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/_ia/**'
+      - 'docs/framework/arch/**'
+      - 'docs/framework/glossary/**'
+      - 'docs/framework/product/**'
+      - 'docs/integration/**'
+      - 'docs/meta/**'
+      - 'docs/reference/**'
+      - 'docs/site/**'
+      - 'docs/start/**'
   push:
+    # Post-merge smoke stays on push: it's the deploy-shaped check and the
+    # repo has had at least one direct-to-main push outside the PR flow, so
+    # this is the only gate guaranteed to catch that case.
     branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/_ia/**'
+      - 'docs/framework/arch/**'
+      - 'docs/framework/glossary/**'
+      - 'docs/framework/product/**'
+      - 'docs/integration/**'
+      - 'docs/meta/**'
+      - 'docs/reference/**'
+      - 'docs/site/**'
+      - 'docs/start/**'
+
+# One run per ref at a time; a new push cancels the stale one in flight.
+concurrency:
+  group: compose-smoke-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   compose:
@@ -13,8 +45,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build image and bring the stack up (waits for health)
-        run: docker compose up -d --build --wait
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build the app image (layer-cached via GitHub Actions cache)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          tags: senatran-mock-app:ci
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Bring the stack up (waits for health)
+        # No --build: the app image was already built + loaded above with GHA
+        # cache; docker-compose.yml pins the same tag so compose reuses it.
+        run: docker compose up -d --wait
 
       - name: Smoke test the running mock
         run: |
