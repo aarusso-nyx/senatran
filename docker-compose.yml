@@ -44,6 +44,7 @@ services:
 
   # The NestJS mock API.
   app:
+    image: senatran-mock-app:ci
     build:
       context: .
     depends_on:
