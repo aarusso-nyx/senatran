@@ -2,8 +2,27 @@ name: pull-request
 
 on:
   pull_request:
-  push:
-    branches: [main]
+    # Docs-only changes never touch a CI gate. The quality job runs
+    # openapi:check + a views/seed determinism diff against
+    # docs/framework/contracts/*.yaml and database/**, so those two paths are
+    # deliberately NOT ignored here — everything else under docs/ is prose or
+    # reference material that no script reads at build/test time.
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/_ia/**'
+      - 'docs/framework/arch/**'
+      - 'docs/framework/glossary/**'
+      - 'docs/framework/product/**'
+      - 'docs/integration/**'
+      - 'docs/meta/**'
+      - 'docs/reference/**'
+      - 'docs/site/**'
+      - 'docs/start/**'
+
+# One run per ref at a time; a new push cancels the stale one in flight.
+concurrency:
+  group: pull-request-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   quality:
