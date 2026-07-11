@@ -23,5 +23,8 @@
     },
     "mutation_command": null
   },
-  "devai_version": "0.1.1"
+  "devai_version": "0.1.1",
+  "ci_economy": {
+    "profile": "gate-staged"
+  }
 }
