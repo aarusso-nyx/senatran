@@ -510,7 +510,7 @@ const FIX_SEGURANCA = '000000001'; // fixture CNH security number (condutor_imag
 vehicles.push({
   placa: 'ABC1D23',
   chassi: '9BWZZZ377VT004251',
-  renavam: '00123456780',
+  renavam: '00123456789',
   motor: 'MOT0000001',
   cambio: 'CAM0000001',
   ownerId: FIX_CPF,
@@ -520,7 +520,7 @@ vehicles.push({
 vehicles.push({
   placa: 'ABC1234',
   chassi: '9BWZZZ377VT004252',
-  renavam: '00123456781',
+  renavam: '00123456800',
   motor: 'MOT0000002',
   cambio: 'CAM0000002',
   ownerId: FIX_CNPJ,
@@ -530,7 +530,7 @@ vehicles.push({
 vehicles.push({
   placa: 'IND1I01',
   chassi: '9BWZZZ377VT004253',
-  renavam: '00123456782',
+  renavam: '00123456908',
   motor: 'MOT0000003',
   cambio: 'CAM0000003',
   ownerId: FIX_CPF,
@@ -1517,7 +1517,7 @@ const auditEvt = (
       dh: '2024-02-11T19:05:00.000Z',
       grav: 'COM_VITIMA_FERIDA',
       org: 'DETRAN-SP',
-      refs: { renavam: '00123456780' }, // veículo ABC1D23 (read fixture)
+      refs: { renavam: '00123456789' }, // veículo ABC1D23 (read fixture)
       vitimas: [{ gravidadeLesao: 'LEVE', tipoEnvolvido: 'CONDUTOR' }],
     },
     {
@@ -1671,7 +1671,7 @@ const auditEvt = (
       protocolo: 'RENAEST-SEED-0000000001',
       situacao: 'RECEBIDO',
     },
-    comVeiculoRenavam: { idSinistro: 'SN00000000002', renavam: '00123456780' },
+    comVeiculoRenavam: { idSinistro: 'SN00000000002', renavam: '00123456789' },
     comCondutor: { idSinistro: 'SN00000000003', cpfCondutor: FIX_CPF },
     comInfracaoAit: { idSinistro: 'SN00000000004', numeroAit: 'A0001001' },
     rejeitado: { idSinistro: 'SN00000000005', situacao: 'REJEITADO' },
@@ -2080,21 +2080,21 @@ const auditEvt = (
         {
           placa: 'ABC1D23',
           chassi: '9BWZZZ377VT004251',
-          renavam: '00123456780',
+          renavam: '00123456789',
           proprietario: { documento: FIX_CPF, tipo: '1' },
           indicadores: 'todos limpos (nenhuma restrição)',
         },
         {
           placa: 'ABC1234',
           chassi: '9BWZZZ377VT004252',
-          renavam: '00123456781',
+          renavam: '00123456800',
           proprietario: { documento: FIX_CNPJ, tipo: '2' },
           indicadores: 'todos limpos (nenhuma restrição)',
         },
         {
           placa: 'IND1I01',
           chassi: '9BWZZZ377VT004253',
-          renavam: '00123456782',
+          renavam: '00123456908',
           proprietario: { documento: FIX_CPF, tipo: '1' },
           indicadores: 'alarme, roubo/furto, transferência e penhora ativos',
         },

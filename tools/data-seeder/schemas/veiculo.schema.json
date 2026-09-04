@@ -1,0 +1,190 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://senatran.local/schemas/veiculo.schema.json",
+  "title": "CSV senatran.veiculo",
+  "description": "Linha CSV de Veículo. id não é exportado porque é o cursor técnico gerado pelo bigserial.",
+  "type": "object",
+  "additionalProperties": false,
+  "x-table": "senatran.veiculo",
+  "x-entity": "veiculo",
+  "x-columnOrder": [
+    "chassi",
+    "placa",
+    "codigo_renavam",
+    "numero_motor",
+    "numero_cambio",
+    "id_proprietario",
+    "tipo_proprietario",
+    "ind_alarme",
+    "ind_roubo_furto",
+    "ind_transferencia",
+    "ind_licenciamento",
+    "ind_circulacao",
+    "ind_penhora",
+    "ind_media_monta",
+    "ind_grande_monta",
+    "ind_recuperado",
+    "payload"
+  ],
+  "required": [
+    "chassi",
+    "placa",
+    "codigo_renavam",
+    "ind_alarme",
+    "ind_roubo_furto",
+    "ind_transferencia",
+    "ind_licenciamento",
+    "ind_circulacao",
+    "ind_penhora",
+    "ind_media_monta",
+    "ind_grande_monta",
+    "ind_recuperado",
+    "payload"
+  ],
+  "properties": {
+    "chassi": {
+      "type": "string",
+      "format": "chassi",
+      "pattern": "^[A-HJ-NPR-Z0-9]{17}$",
+      "x-source": "chassi",
+      "x-unique": true
+    },
+    "placa": {
+      "type": "string",
+      "format": "placa",
+      "pattern": "^(?:[A-HJ-NPR-Z]{3}[0-9][A-HJ-NPR-Z][0-9]{2}|[A-HJ-NPR-Z]{3}[0-9]{4})$",
+      "x-source": "placa",
+      "x-unique": true
+    },
+    "codigo_renavam": {
+      "type": "string",
+      "format": "renavam",
+      "pattern": "^[0-9]{11}$",
+      "x-source": "codigoRenavam",
+      "x-unique": true
+    },
+    "numero_motor": {
+      "type": ["string", "null"],
+      "pattern": "^MOT[0-9]{7}$",
+      "x-source": "numeroMotor",
+      "x-unique": true
+    },
+    "numero_cambio": {
+      "type": ["string", "null"],
+      "pattern": "^CAM[0-9]{7}$",
+      "x-source": "numeroCambio",
+      "x-unique": true
+    },
+    "id_proprietario": {
+      "type": ["string", "null"],
+      "pattern": "^(?:[0-9]{11}|[0-9]{14})$",
+      "x-source": "idProprietario"
+    },
+    "tipo_proprietario": {
+      "type": ["string", "null"],
+      "enum": ["1", "2", null],
+      "x-source": "tipoProprietario"
+    },
+    "ind_alarme": {
+      "type": "boolean",
+      "default": false,
+      "x-source": "indicators.alarme"
+    },
+    "ind_roubo_furto": {
+      "type": "boolean",
+      "default": false,
+      "x-source": "indicators.rouboFurto"
+    },
+    "ind_transferencia": {
+      "type": "boolean",
+      "default": false,
+      "x-source": "indicators.transferencia"
+    },
+    "ind_licenciamento": {
+      "type": "boolean",
+      "default": false,
+      "x-source": "indicators.licenciamento"
+    },
+    "ind_circulacao": {
+      "type": "boolean",
+      "default": false,
+      "x-source": "indicators.circulacao"
+    },
+    "ind_penhora": {
+      "type": "boolean",
+      "default": false,
+      "x-source": "indicators.penhora"
+    },
+    "ind_media_monta": {
+      "type": "boolean",
+      "default": false,
+      "x-source": "indicators.mediaMonta"
+    },
+    "ind_grande_monta": {
+      "type": "boolean",
+      "default": false,
+      "x-source": "indicators.grandeMonta"
+    },
+    "ind_recuperado": {
+      "type": "boolean",
+      "default": false,
+      "x-source": "indicators.recuperado"
+    },
+    "payload": {
+      "type": "object",
+      "x-source": "payload",
+      "x-csv-json": true,
+      "required": [
+        "chassi",
+        "placa",
+        "codigoRenavam",
+        "codigoTipoProprietario",
+        "numeroIdentificacaoProprietario",
+        "anoFabricacao",
+        "anoModelo",
+        "indicadorAlarme",
+        "indicadorRouboFurto"
+      ],
+      "properties": {
+        "chassi": {
+          "type": "string",
+          "format": "chassi",
+          "pattern": "^[A-HJ-NPR-Z0-9]{17}$"
+        },
+        "placa": {
+          "type": "string",
+          "format": "placa",
+          "pattern": "^(?:[A-HJ-NPR-Z]{3}[0-9][A-HJ-NPR-Z][0-9]{2}|[A-HJ-NPR-Z]{3}[0-9]{4})$"
+        },
+        "codigoRenavam": {
+          "type": "string",
+          "format": "renavam",
+          "pattern": "^[0-9]{11}$"
+        },
+        "numeroMotor": { "type": "string", "pattern": "^MOT[0-9]{7}$" },
+        "numeroCambio": { "type": "string", "pattern": "^CAM[0-9]{7}$" },
+        "codigoTipoProprietario": { "type": "string", "enum": ["1", "2"] },
+        "numeroIdentificacaoProprietario": {
+          "type": "string",
+          "pattern": "^(?:[0-9]{11}|[0-9]{14})$"
+        },
+        "anoFabricacao": {
+          "type": "integer",
+          "minimum": 1990,
+          "maximum": 2024
+        },
+        "anoModelo": { "type": "integer", "minimum": 1990, "maximum": 2025 },
+        "potencia": { "type": "integer", "minimum": 25, "maximum": 300 },
+        "cilindradas": { "type": "integer", "minimum": 250, "maximum": 6000 },
+        "qtdEixos": { "type": "integer", "minimum": 2, "maximum": 3 },
+        "lotacao": { "type": "integer", "minimum": 3, "maximum": 42 },
+        "pbt": { "type": "integer", "minimum": 2000, "maximum": 16000 },
+        "cmt": { "type": "integer", "minimum": 3500, "maximum": 25000 },
+        "cmc": { "type": "integer", "minimum": 4000, "maximum": 30000 },
+        "indicadorAlarme": { "type": "boolean" },
+        "indicadorRouboFurto": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    }
+  }
+}

@@ -35,8 +35,8 @@ describe('read sweep — veiculos', () => {
     expect(res.body.veiculo[0].placa).toBe('ABC1D23');
   });
 
-  it('renavam 00123456780 → 200', async () => {
-    const res = await get('/v1/veiculos/renavam/00123456780');
+  it('renavam 00123456789 → 200', async () => {
+    const res = await get('/v1/veiculos/renavam/00123456789');
     expect(res.status).toBe(200);
     expect(res.body.veiculo[0].placa).toBe('ABC1D23');
   });

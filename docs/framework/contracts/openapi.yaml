@@ -2593,7 +2593,7 @@ components:
         veiculo:
           - placa: ABC1D23
             chassi: 9BWZZZ377VT004251
-            codigoRenavam: '00123456780'
+            codigoRenavam: '00123456789'
             anoFabricacao: 2018
             anoModelo: 2019
             codigoCor: '6'

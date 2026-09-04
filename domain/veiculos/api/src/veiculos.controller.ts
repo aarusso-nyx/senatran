@@ -57,7 +57,7 @@ export class VeiculosController {
   ) {
     return this.read.list(
       'veiculo',
-      { id_proprietario: identificacao },
+      { id_proprietario: identificacao, tipo_proprietario: '1' },
       cursor,
     );
   }
@@ -69,7 +69,7 @@ export class VeiculosController {
   ) {
     return this.read.list(
       'veiculo',
-      { id_proprietario: identificacao },
+      { id_proprietario: identificacao, tipo_proprietario: '2' },
       cursor,
     );
   }
@@ -82,6 +82,7 @@ export class VeiculosController {
   ) {
     return this.read.one('v_veiculo_by_proprietario_cpf_chassi_renavam', {
       id_proprietario: cpf,
+      tipo_proprietario: '1',
       chassi,
       codigo_renavam: renavam,
     });
@@ -95,6 +96,7 @@ export class VeiculosController {
   ) {
     return this.read.one('v_veiculo_by_proprietario_cpf_placa_renavam', {
       id_proprietario: cpf,
+      tipo_proprietario: '1',
       placa,
       codigo_renavam: renavam,
     });
@@ -108,6 +110,7 @@ export class VeiculosController {
   ) {
     return this.read.one('v_veiculo_by_proprietario_cnpj_chassi_renavam', {
       id_proprietario: cnpj,
+      tipo_proprietario: '2',
       chassi,
       codigo_renavam: renavam,
     });
@@ -121,6 +124,7 @@ export class VeiculosController {
   ) {
     return this.read.one('v_veiculo_by_proprietario_cnpj_placa_renavam', {
       id_proprietario: cnpj,
+      tipo_proprietario: '2',
       placa,
       codigo_renavam: renavam,
     });
@@ -131,11 +135,13 @@ export class VeiculosController {
   )
   csvByCpf(
     @Param('codigoSegurancaCrv') codigoSegurancaCrv: string,
+    @Param('cpf') cpf: string,
     @Param('renavam') renavam: string,
     @Param('placa') placa: string,
   ) {
     return this.read.one('v_veiculo_codigo_seguranca_crv_by_cpf', {
       codigo_seguranca_crv: codigoSegurancaCrv,
+      cpf,
       renavam,
       placa,
     });
@@ -146,11 +152,13 @@ export class VeiculosController {
   )
   csvByCnpj(
     @Param('codigoSegurancaCrv') codigoSegurancaCrv: string,
+    @Param('cnpj') cnpj: string,
     @Param('renavam') renavam: string,
     @Param('placa') placa: string,
   ) {
     return this.read.one('v_veiculo_codigo_seguranca_crv_by_cnpj', {
       codigo_seguranca_crv: codigoSegurancaCrv,
+      cnpj,
       renavam,
       placa,
     });

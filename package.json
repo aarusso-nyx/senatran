@@ -28,6 +28,8 @@
     "db:seed": "bash database/seed.sh",
     "views:generate": "tsx tools/scripts/generate-views.ts",
     "seed:generate": "tsx tools/scripts/generate-seed.ts",
+    "data:generate": "tsx tools/data-seeder/csv-cli.ts",
+    "data:populate": "node populate.js",
     "devai": "node ../devai/packages/cli/dist/bin.js",
     "devai:doctor": "node ../devai/packages/cli/dist/bin.js doctor --adopter --repo-root .",
     "devai:inventory": "node ../devai/packages/cli/dist/bin.js inv-regen --repo-root .",
@@ -54,6 +56,7 @@
     "rxjs": "^7.8.2"
   },
   "devDependencies": {
+    "@faker-js/faker": "10.1.0",
     "@nestjs/testing": "^11.1.28",
     "@types/express": "^5.0.6",
     "@types/node": "^25.6.0",

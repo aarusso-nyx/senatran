@@ -68,7 +68,7 @@ never change across reseeds:
 | placa (legacy)      | `ABC1234`           | legacy-format plate, CNPJ owner                                               |
 | placa (indicadores) | `IND1I01`           | alarme + roubo/furto + transferência + penhora                                |
 | chassi              | `9BWZZZ377VT004251` | linked to `ABC1D23`                                                           |
-| renavam             | `00123456780`       | linked to `ABC1D23`                                                           |
+| renavam             | `00123456789`       | linked to `ABC1D23`                                                           |
 | cpf (condutor)      | `52998224725`       | driver with CNH; also owner of `ABC1D23`                                      |
 | numeroSeguranca     | `000000001`         | CNH security nº for `52998224725` / `01234567890` (validacao/imagens/retrato) |
 | cnpj (proprietário) | `11444777000161`    | company owner of `ABC1234`                                                    |
@@ -77,6 +77,12 @@ never change across reseeds:
 | AIT (RENAINF)       | `A0001001`          | AIT-record `situacao = AUTUACAO_ABERTA`                                       |
 | sinistro (RENAEST)  | `SN00000000001`     | aceito, `situacao = RECEBIDO`                                                 |
 | sinistro rejeitado  | `SN00000000005`     | terminal `REJEITADO` (correção não permitida)                                 |
+
+Compatibility note: the three stable vehicle RENAVAM fixtures changed from
+`00123456780`, `00123456781`, and `00123456782` to `00123456789`,
+`00123456800`, and `00123456908`, respectively. Consumers with hardcoded
+fixtures must update atomically; the replacement values use distinct bases and
+valid check digits.
 
 > The **authoritative, machine-readable** fixture list — including the
 > credentialed examiner CPF, exact counts, and every magic key — is emitted by
@@ -133,7 +139,7 @@ and the natural dedup key:
   `402` `RENAEST.CRASH.CORRECTION_NOT_ALLOWED`.
 - **Forced 500** — submit with `codigoMunicipio: 9999999` → `500`.
 
-The seeded crashes cross-link existing fixtures (vehicle `renavam 00123456780`,
+The seeded crashes cross-link existing fixtures (vehicle `renavam 00123456789`,
 condutor `52998224725`, AIT `A0001001`); all are enumerated under `renaest` in
 [`database/seed/manifest.json`](../../../database/seed/manifest.json).
 

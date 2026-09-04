@@ -90,7 +90,7 @@ result (INV-IDEMP-001).
 
 Seeded, deterministic (see `renaest` in `database/seed/manifest.json`):
 `SN00000000001` (accepted, RECEBIDO), `SN00000000002` (linked to vehicle
-`renavam 00123456780`), `SN00000000003` (linked to condutor `52998224725`),
+`renavam 00123456789`), `SN00000000003` (linked to condutor `52998224725`),
 `SN00000000004` (linked to AIT `A0001001`), `SN00000000005` (terminal
 `REJEITADO`), `SN00000000006` (`EM_ANALISE`), `SN00000000007` (carries a
 pre-existing correction).

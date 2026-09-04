@@ -6,7 +6,9 @@ import {
   placaMercosul,
   placaLegacy,
   chassi,
+  isValidRenavam,
   renavam,
+  renavamFromBase,
 } from '../../tools/scripts/lib/br.js';
 
 const validCpf = (v: string): boolean => {
@@ -55,8 +57,21 @@ describe('BR format helpers (INV-DATA-001)', () => {
       const c = chassi(rng);
       expect(c).toHaveLength(17);
       expect(c).not.toMatch(/[IOQ]/);
-      expect(renavam(rng)).toMatch(/^\d{11}$/);
+      expect(isValidRenavam(renavam(rng))).toBe(true);
     }
+  });
+
+  it('validates the distinct stable RENAVAM fixtures by check digit', () => {
+    const fixtures = [
+      renavamFromBase('0012345678'),
+      renavamFromBase('0012345680'),
+      renavamFromBase('0012345690'),
+    ];
+
+    expect(fixtures).toEqual(['00123456789', '00123456800', '00123456908']);
+    expect(new Set(fixtures).size).toBe(3);
+    expect(fixtures.every(isValidRenavam)).toBe(true);
+    expect(isValidRenavam('00123456788')).toBe(false);
   });
 
   it('is deterministic: same seed → identical sequence', () => {

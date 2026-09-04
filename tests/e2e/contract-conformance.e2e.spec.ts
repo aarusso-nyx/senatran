@@ -30,7 +30,7 @@ const schemas = contract.components.schemas;
 const PARAMS: Record<string, string> = {
   placa: 'IND1I01',
   chassi: '9BWZZZ377VT004253',
-  renavam: '00123456782',
+  renavam: '00123456908',
   motor: 'MOT0000003',
   cambio: 'CAM0000003',
   cpf: '52998224725',

@@ -103,7 +103,7 @@
       {
         "placa": "ABC1D23",
         "chassi": "9BWZZZ377VT004251",
-        "renavam": "00123456780",
+        "renavam": "00123456789",
         "proprietario": {
           "documento": "52998224725",
           "tipo": "1"
@@ -113,7 +113,7 @@
       {
         "placa": "ABC1234",
         "chassi": "9BWZZZ377VT004252",
-        "renavam": "00123456781",
+        "renavam": "00123456800",
         "proprietario": {
           "documento": "11444777000161",
           "tipo": "2"
@@ -123,7 +123,7 @@
       {
         "placa": "IND1I01",
         "chassi": "9BWZZZ377VT004253",
-        "renavam": "00123456782",
+        "renavam": "00123456908",
         "proprietario": {
           "documento": "52998224725",
           "tipo": "1"
@@ -184,7 +184,7 @@
     },
     "comVeiculoRenavam": {
       "idSinistro": "SN00000000002",
-      "renavam": "00123456780"
+      "renavam": "00123456789"
     },
     "comCondutor": {
       "idSinistro": "SN00000000003",

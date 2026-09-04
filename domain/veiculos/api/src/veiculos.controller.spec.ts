@@ -47,7 +47,12 @@ describe('VeiculosController delegates to the right seam + keys', () => {
     expect(last).toEqual({
       fn: 'one',
       target: 'v_veiculo_by_proprietario_cnpj_chassi_renavam',
-      keys: { id_proprietario: 'CNPJ', chassi: 'CH', codigo_renavam: 'RN' },
+      keys: {
+        id_proprietario: 'CNPJ',
+        tipo_proprietario: '2',
+        chassi: 'CH',
+        codigo_renavam: 'RN',
+      },
     });
   });
   it('comunicacaoVenda cpf → object view', async () => {
@@ -76,8 +81,8 @@ describe('VeiculosController delegates to the right seam + keys', () => {
       c.byProprietarioCpfChassiRenavam('a', 'b', 'c'),
       c.byProprietarioCpfPlacaRenavam('a', 'b', 'c'),
       c.byProprietarioCnpjPlacaRenavam('a', 'b', 'c'),
-      c.csvByCpf('a', 'b', 'c'),
-      c.csvByCnpj('a', 'b', 'c'),
+      c.csvByCpf('a', 'b', 'c', 'd'),
+      c.csvByCnpj('a', 'b', 'c', 'd'),
       c.comunicacaoVendaCnpj('a', 'b', 'c'),
       c.multaCpf('a', 'b', 'c'),
       c.multaCnpj('a', 'b', 'c'),
