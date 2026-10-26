@@ -141,6 +141,13 @@ function buildSelect(op: OpenApiOp, path: string): string {
     .filter((p) => p.in === 'path')
     .map((p) => p.name as string);
   const keys = params.map((p) => paramToCol(p, table));
+  if (
+    table === 'veiculo' &&
+    path.includes('/proprietario/') &&
+    !keys.includes('tipo_proprietario')
+  ) {
+    keys.splice(1, 0, 'tipo_proprietario');
+  }
 
   switch (wrap) {
     case 'object':

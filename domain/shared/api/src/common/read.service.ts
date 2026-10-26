@@ -62,7 +62,12 @@ export class ReadService {
 
   private async scenarioCheck(keys: Record<string, string>): Promise<void> {
     for (const [col, val] of Object.entries(keys)) {
-      const kind = COL_KIND[col];
+      const kind =
+        col === 'id_proprietario'
+          ? keys.tipo_proprietario === '2'
+            ? 'cnpj'
+            : 'cpf'
+          : COL_KIND[col];
       if (kind) {
         const forced = await this.scenario.forced(kind, val);
         if (forced) throw new WsdenatranError(forced.status, forced.message);

@@ -50,6 +50,12 @@ const cpfCheck = (base: string): string => {
 /** Valid 11-digit CPF from a 9-digit numeric base. */
 export const cpf = (rng: Rng): string => cpfCheck(rng.digits(9));
 
+/** Returns whether a value is an 11-digit CPF with valid check digits. */
+export const isValidCpf = (value: string): boolean =>
+  /^\d{11}$/.test(value) &&
+  !/^(\d)\1{10}$/.test(value) &&
+  cpfCheck(value.slice(0, 9)) === value;
+
 const cnpjCheck = (base: string): string => {
   const calc = (nums: number[], weights: number[]): number => {
     let sum = 0;
@@ -68,6 +74,12 @@ const cnpjCheck = (base: string): string => {
 /** Valid 14-digit CNPJ (matriz 0001) from an 8-digit numeric base. */
 export const cnpj = (rng: Rng): string => cnpjCheck(rng.digits(8) + '0001');
 
+/** Returns whether a value is a 14-digit CNPJ with valid check digits. */
+export const isValidCnpj = (value: string): boolean =>
+  /^\d{14}$/.test(value) &&
+  !/^(\d)\1{13}$/.test(value) &&
+  cnpjCheck(value.slice(0, 12)) === value;
+
 const L = 'ABCDEFGHJKLMNPRSTUVWXYZ'; // plate letters (no I/O/Q ambiguity)
 /** Mercosul plate LLLNLNN, e.g. ABC1D23. */
 export const placaMercosul = (rng: Rng): string =>
@@ -85,6 +97,9 @@ export const placaLegacy = (rng: Rng): string =>
   rng.pick(L.split('')) +
   rng.digits(4);
 
+export const isValidPlate = (value: string): boolean =>
+  /^(?:[A-HJ-NPR-Z]{3}\d[A-HJ-NPR-Z]\d{2}|[A-HJ-NPR-Z]{3}\d{4})$/.test(value);
+
 const VIN = 'ABCDEFGHJKLMNPRSTUVWXYZ0123456789'; // no I/O/Q
 /** 17-char VIN-style chassi. */
 export const chassi = (rng: Rng): string => {
@@ -93,15 +108,27 @@ export const chassi = (rng: Rng): string => {
   return out;
 };
 
-/** 11-digit RENAVAM (last digit a mod-11 check). */
-export const renavam = (rng: Rng): string => {
-  const base = rng.digits(10);
+export const isValidChassi = (value: string): boolean =>
+  /^[A-HJ-NPR-Z0-9]{17}$/.test(value);
+
+/** Builds an 11-digit RENAVAM from a 10-digit numeric base. */
+export const renavamFromBase = (base: string): string => {
+  if (!/^\d{10}$/.test(base)) {
+    throw new Error('RENAVAM base must contain exactly 10 digits');
+  }
   const w = [3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
   let sum = 0;
   for (let i = 0; i < 10; i++) sum += Number(base[i]) * w[i];
   const r = (sum * 10) % 11;
   return base + (r === 10 ? 0 : r);
 };
+
+/** Returns whether a value is an 11-digit RENAVAM with a valid check digit. */
+export const isValidRenavam = (value: string): boolean =>
+  /^\d{11}$/.test(value) && renavamFromBase(value.slice(0, 10)) === value;
+
+/** 11-digit RENAVAM (last digit a mod-11 check). */
+export const renavam = (rng: Rng): string => renavamFromBase(rng.digits(10));
 
 /** Deterministic ISO date-time between two years. */
 export const dateTime = (

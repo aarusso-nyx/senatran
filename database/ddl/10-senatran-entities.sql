@@ -5,10 +5,10 @@
 
 -- Veículo (schema Veiculo). Owner + indicators denormalized as columns.
 create table senatran.veiculo (
-  id                 bigserial primary key,
-  chassi             text not null unique,
-  placa              text not null,
-  codigo_renavam     text not null,
+  id                 bigserial not null unique,
+  chassi             text primary key,
+  placa              text not null unique,
+  codigo_renavam     text not null unique,
   numero_motor       text,
   numero_cambio      text,
   id_proprietario    text,          -- numeroIdentificacaoProprietario
@@ -24,8 +24,6 @@ create table senatran.veiculo (
   ind_recuperado     boolean not null default false,
   payload            jsonb not null
 );
-create index idx_veiculo_placa   on senatran.veiculo (placa);
-create index idx_veiculo_renavam on senatran.veiculo (codigo_renavam);
 create index idx_veiculo_motor   on senatran.veiculo (numero_motor);
 create index idx_veiculo_cambio  on senatran.veiculo (numero_cambio);
 create index idx_veiculo_prop    on senatran.veiculo (id_proprietario, tipo_proprietario);

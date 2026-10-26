@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://senatran.local/schemas/condutor.schema.json",
+  "title": "CSV senatran.condutor",
+  "description": "Linha CSV de Condutor. id não é exportado porque é gerado pelo bigserial.",
+  "type": "object",
+  "additionalProperties": false,
+  "x-table": "senatran.condutor",
+  "x-entity": "condutor",
+  "x-columnOrder": [
+    "cpf",
+    "numero_registro",
+    "numero_formulario_renach",
+    "numero_lista_impedimento",
+    "numero_pgu",
+    "numero_formulario_pid",
+    "nome",
+    "data_nascimento",
+    "nome_mae",
+    "payload"
+  ],
+  "required": ["cpf", "payload"],
+  "properties": {
+    "cpf": {
+      "type": "string",
+      "format": "cpf",
+      "pattern": "^[0-9]{11}$",
+      "x-source": "cpf",
+      "x-unique": true
+    },
+    "numero_registro": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9]{11}$",
+      "x-source": "numeroRegistro",
+      "x-unique": true
+    },
+    "numero_formulario_renach": {
+      "type": ["string", "null"],
+      "pattern": "^RN[0-9]{10}$",
+      "x-source": "numeroFormularioRenach",
+      "x-unique": true
+    },
+    "numero_lista_impedimento": {
+      "type": ["string", "null"],
+      "pattern": "^IMP[0-9]{7}$",
+      "x-source": "numeroListaImpedimento",
+      "x-unique": true
+    },
+    "numero_pgu": {
+      "type": ["string", "null"],
+      "pattern": "^PGU[0-9]{7}$",
+      "x-source": "numeroPgu",
+      "x-unique": true
+    },
+    "numero_formulario_pid": {
+      "type": ["string", "null"],
+      "pattern": "^PID[0-9]{7}$",
+      "x-source": "numeroFormularioPid",
+      "x-unique": true
+    },
+    "nome": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "x-source": "nome"
+    },
+    "data_nascimento": {
+      "type": ["string", "null"],
+      "format": "date",
+      "x-dateMinimum": "1945-01-01",
+      "x-dateMaximum": "2006-12-28",
+      "x-source": "dataNascimento"
+    },
+    "nome_mae": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "x-source": "nomeMae"
+    },
+    "payload": {
+      "type": "object",
+      "x-source": "payload",
+      "x-csv-json": true,
+      "required": [
+        "cpf",
+        "numeroRegistro",
+        "numeroFormularioRenach",
+        "nome",
+        "dataNascimento",
+        "nomeMae",
+        "situacaoCnh",
+        "sexo",
+        "ocorrencias"
+      ],
+      "properties": {
+        "cpf": { "type": "string", "format": "cpf", "pattern": "^[0-9]{11}$" },
+        "numeroRegistro": { "type": "string", "pattern": "^[0-9]{11}$" },
+        "numeroFormularioRenach": {
+          "type": "string",
+          "pattern": "^RN[0-9]{10}$"
+        },
+        "numeroListaImpedimento": {
+          "type": "string",
+          "pattern": "^IMP[0-9]{7}$"
+        },
+        "numeroPgu": { "type": "string", "pattern": "^PGU[0-9]{7}$" },
+        "numeroFormularioPid": { "type": "string", "pattern": "^PID[0-9]{7}$" },
+        "nome": { "type": "string", "minLength": 1 },
+        "dataNascimento": {
+          "type": "string",
+          "format": "date-time",
+          "x-dateMinimum": "1945-01-01T00:00:00.000Z",
+          "x-dateMaximum": "2006-12-28T00:00:00.000Z"
+        },
+        "nomeMae": { "type": "string", "minLength": 1 },
+        "situacaoCnh": { "type": "string", "enum": ["A", "V", "B", "S", "C"] },
+        "sexo": { "type": "integer", "enum": [1, 2] },
+        "quantidadeOcorrenciasImpedimentos": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ocorrencias": { "type": "array" }
+      },
+      "additionalProperties": true
+    }
+  }
+}

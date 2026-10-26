@@ -49,7 +49,7 @@ Read it and drive tests from it. Essentials:
     placa ABC1D23  -> vehicle, all restriction indicators clear
     placa IND1I01  -> vehicle with alarme + roubo/furto + transferência + penhora
     placa ABC1234  -> legacy plate, PJ (CNPJ) owner
-    chassi 9BWZZZ377VT004251, renavam 00123456780 (all -> ABC1D23)
+    chassi 9BWZZZ377VT004251, renavam 00123456789 (all -> ABC1D23)
     condutor cpf 52998224725 ; proprietário cnpj 11444777000161
 - Transactional fixtures:
     RENACH process RS123456789 (at AGUARDANDO_MEDICO)

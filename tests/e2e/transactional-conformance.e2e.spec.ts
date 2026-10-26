@@ -423,7 +423,7 @@ describe('transactional contract conformance', () => {
       condicoesMeteorologicas: 'BOM',
       versaoLeiaute: '1.0',
       vitimas: [{ gravidadeLesao: 'LEVE', tipoEnvolvido: 'CONDUTOR' }],
-      referencias: { renavam: '00123456780' },
+      referencias: { renavam: '00123456789' },
     };
     const sub = await post('/v1/renaest/sinistros', crash);
     check('post', '/renaest/sinistros', sub);

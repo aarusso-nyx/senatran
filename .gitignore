@@ -13,6 +13,8 @@ dist/
 
 # Test / coverage
 coverage/
+.tmp-data-seeder-validation/
+.tmp-seeder-pg-*/
 .devai/state/coverage/
 
 # DEVAI mutable state (config is tracked; volatile state is not)

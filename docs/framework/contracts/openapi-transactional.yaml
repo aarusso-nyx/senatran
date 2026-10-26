@@ -2992,7 +2992,7 @@ components:
         vitimas:
           - { gravidadeLesao: LEVE, tipoEnvolvido: CONDUTOR }
         referencias:
-          renavam: '00123456780'
+          renavam: '00123456789'
     SinistroLoteRequest:
       type: object
       description: Lote de sinistros.
@@ -3060,7 +3060,7 @@ components:
         local: KM 120 - via urbana
         orgaoResponsavel: DETRAN-SP
         referencias:
-          renavam: '00123456780'
+          renavam: '00123456789'
     SinistroLoteResponse:
       type: object
       properties:

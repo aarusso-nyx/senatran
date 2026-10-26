@@ -277,35 +277,35 @@ create or replace view contract.v_veiculo_by_placa as
 
 -- GET /v1/veiculos/proprietario/cnpj/{cnpj}/chassi/{chassi}/renavam/{renavam}
 create or replace view contract.v_veiculo_by_proprietario_cnpj_chassi_renavam as
-  select id_proprietario, chassi, codigo_renavam, payload
+  select id_proprietario, tipo_proprietario, chassi, codigo_renavam, payload
   from senatran.veiculo;
 
 -- GET /v1/veiculos/proprietario/cnpj/{cnpj}/placa/{placa}/renavam/{renavam}
 create or replace view contract.v_veiculo_by_proprietario_cnpj_placa_renavam as
-  select id_proprietario, placa, codigo_renavam, payload
+  select id_proprietario, tipo_proprietario, placa, codigo_renavam, payload
   from senatran.veiculo;
 
 -- GET /v1/veiculos/proprietario/cnpj/{identificacao}
 create or replace view contract.v_veiculos_by_proprietario_cnpj as
-  select id_proprietario, jsonb_build_object('quantidadeVeiculo', count(*), 'quantidadeVeiculoReal', count(*), 'idUltimoRegistro', coalesce(max(id), 0), 'veiculo', coalesce(jsonb_agg(payload order by id), '[]'::jsonb)) as payload
+  select id_proprietario, tipo_proprietario, jsonb_build_object('quantidadeVeiculo', count(*), 'quantidadeVeiculoReal', count(*), 'idUltimoRegistro', coalesce(max(id), 0), 'veiculo', coalesce(jsonb_agg(payload order by id), '[]'::jsonb)) as payload
   from senatran.veiculo
-  group by id_proprietario;
+  group by id_proprietario, tipo_proprietario;
 
 -- GET /v1/veiculos/proprietario/cpf/{cpf}/chassi/{chassi}/renavam/{renavam}
 create or replace view contract.v_veiculo_by_proprietario_cpf_chassi_renavam as
-  select id_proprietario, chassi, codigo_renavam, payload
+  select id_proprietario, tipo_proprietario, chassi, codigo_renavam, payload
   from senatran.veiculo;
 
 -- GET /v1/veiculos/proprietario/cpf/{cpf}/placa/{placa}/renavam/{renavam}
 create or replace view contract.v_veiculo_by_proprietario_cpf_placa_renavam as
-  select id_proprietario, placa, codigo_renavam, payload
+  select id_proprietario, tipo_proprietario, placa, codigo_renavam, payload
   from senatran.veiculo;
 
 -- GET /v1/veiculos/proprietario/cpf/{identificacao}
 create or replace view contract.v_veiculos_by_proprietario_cpf as
-  select id_proprietario, jsonb_build_object('quantidadeVeiculo', count(*), 'quantidadeVeiculoReal', count(*), 'idUltimoRegistro', coalesce(max(id), 0), 'veiculo', coalesce(jsonb_agg(payload order by id), '[]'::jsonb)) as payload
+  select id_proprietario, tipo_proprietario, jsonb_build_object('quantidadeVeiculo', count(*), 'quantidadeVeiculoReal', count(*), 'idUltimoRegistro', coalesce(max(id), 0), 'veiculo', coalesce(jsonb_agg(payload order by id), '[]'::jsonb)) as payload
   from senatran.veiculo
-  group by id_proprietario;
+  group by id_proprietario, tipo_proprietario;
 
 -- GET /v1/veiculos/recall/chassi/{chassi}
 create or replace view contract.v_veiculo_recall_by_chassi as
